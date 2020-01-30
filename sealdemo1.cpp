@@ -299,8 +299,8 @@ void bfvdemo()
 
 void integerEncoderDemo()
 {
-	/* ---------------- Encoders DEMO -----------------*/
-	cout << "----------------- Encoders DEMO -----------------\n"
+	/* ---------------- Integer Encoder DEMO -----------------*/
+	cout << "----------------- Ingteger Encoder DEMO -----------------\n"
 		 << endl;
 
 	// Parameters setup
@@ -368,9 +368,36 @@ void integerEncoderDemo()
 	cout << "...... Correct." << endl;
 }
 
+void batchEncoderDemo()
+{
+	/* ---------------- Batch Encoder DEMO -----------------*/
+	cout << "----------------- Batch Encoder DEMO -----------------\n"
+		 << endl;
+
+	/* Batching allows the BFV plaintext polynomials to be viewed as 2-by-(N/2) matrices, 
+	with each element an integer modulo T */
+	EncryptionParameters params(scheme_type::BFV);
+	size_t poly_modulus_degree = 8192;
+	params.set_poly_modulus_degree(poly_modulus_degree);
+	params.set_coeff_modulus(CoeffModulus::BFVDefault(poly_modulus_degree));
+
+    /* To enable batching, we need to set the plain_modulus to be a prime number
+    congruent to 1 modulo 2*poly_modulus_degree. Microsoft SEAL provides a helper
+    method for finding such a prime. In this example we create a 20-bit prime
+    that supports batching. */
+	params.set_plain_modulus(PlainModulus::Batching(poly_modulus_degree, 20));
+
+	auto context = SEALContext::Create(params);
+	print_parameters(context);
+	cout << endl;
+
+
+}
+
 int main()
 {
-	// bfvdemo();
-	integerEncoderDemo();
+	bfvdemo();
+	// integerEncoderDemo();
+	// batchEncoderDemo();
 	return 0;
 }
