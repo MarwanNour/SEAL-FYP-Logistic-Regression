@@ -1,5 +1,5 @@
 # SEALDemo
-Microsoft SEAL Demo
+Microsoft SEAL Demo based on the examples already provided in the library. 
 
 ## Setup for Linux
 First, make sure you have Microsoft SEAL installed. Follow the tutorial on https://github.com/Microsoft/SEAL.
