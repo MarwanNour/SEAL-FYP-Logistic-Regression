@@ -1,7 +1,8 @@
 cmake_install.cmake
 CMakeCache.txt
 Makefile
-sealdemo1
+1_bfv
+2_encoders
 .vscode
 !.vscode/settings.json
 !.vscode/tasks.json
