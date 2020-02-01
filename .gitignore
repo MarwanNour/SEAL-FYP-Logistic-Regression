@@ -4,6 +4,7 @@ Makefile
 1_bfv
 2_encoders
 3_levels
+4_ckks
 .vscode
 !.vscode/settings.json
 !.vscode/tasks.json
