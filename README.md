@@ -32,3 +32,12 @@ There are 3 types of encoding that can be used in SEAL: `Integer Encoding` , `Ba
 The reason you may want to encode your Plaintext before encrypting it is to avoid integer overflow. Integer overflow happens when the plaintext coefficients exceed `plain_modulus`.
 
 ### 3 - Levels
+The `modulus switching chain` is a chain of other encryption parameters derived from the original parameters. The parameters in the modulus switching chain are the same as the original parameters with the exception that size of the coefficient modulus is decreasing going down the chain. The example provided shows a `coeff_modulus` of 5 primes of sizes `{50, 30, 30, 50, 50}` bits. Thus, there are 5 levels in this chain: 
+- `{50, 30, 30, 50, 50}` -> Level 4 (Key level)
+- `{50, 30, 30, 50}` -> Level 3 (Data level)
+- `{50, 30, 30}`-> Level 2
+- `{50, 30}` -> Level 1
+- `{50}` -> Level 0 (Lowest level)
+
+
+`Modulus Switching` is a technique of changing the ciphertext parameters down the chain. You may want to use this to gain computational performance from having smaller parameters. This method may reduce your ciphertext noise budget. If there is no need to perform further computations on a ciphertext, you can switch it down to the smallest (last) set of parameters in the chain before decrypting it.
