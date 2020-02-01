@@ -2,9 +2,10 @@ cmake_minimum_required(VERSION 3.10)
 project(SEALDemo VERSION 1.0)
 add_executable(1_bfv 1_bfv.cpp)
 add_executable(2_encoders 2_encoders.cpp)
+add_executable(3_levels 3_levels.cpp)
 
 find_package(SEAL)
 target_link_libraries(1_bfv SEAL::seal)
 target_link_libraries(2_encoders SEAL::seal)
-
+target_link_libraries(3_levels SEAL::seal)
 
