@@ -5,6 +5,7 @@ add_executable(2_encoders 2_encoders.cpp)
 add_executable(3_levels 3_levels.cpp)
 add_executable(4_ckks 4_ckks.cpp)
 add_executable(5_rotation 5_rotation.cpp)
+add_executable(vector_ops vector_ops.cpp)
 
 find_package(SEAL)
 target_link_libraries(1_bfv SEAL::seal)
@@ -12,4 +13,5 @@ target_link_libraries(2_encoders SEAL::seal)
 target_link_libraries(3_levels SEAL::seal)
 target_link_libraries(4_ckks SEAL::seal)
 target_link_libraries(5_rotation SEAL::seal)
+target_link_libraries(vector_ops SEAL::seal)
 
