@@ -13,7 +13,8 @@ Refer to the Windows installation of SEAL in https://github.com/Microsoft/SEAL.
 Place the `.cpp` file(s) in the Source Files, and then build the project.
 
 ## About the C++ files
-All the explanations are based on the comments and code from the SEAL examples.
+All the explanations are based on the comments and code from the SEAL examples. If you need a more detailed explaination, please refer to the original SEAL examples.
+
 ### 1 - BFV
 The first file is the `1_bfv.cpp`. It contains an example on how to use the bfv scheme in SEAL. The BFV encryption scheme is used mainly to encrypt integers. It requires three parameters:
 - Degree of Polynomial Modulus: `poly_modulus_degree`
@@ -53,4 +54,6 @@ Therefore a generally good strategy is to choose the parameters for the CKKS sch
 - Choose another `60 bit` prime as the last prime in `coeff_modulus`
 - Choose the intermediate primes to be close to each other
 
-The values I have used are `{60, 40, 40, 60}` with a `poly_modulus_degree = 8192` which yields a `coeff_modulus` of `200 bits` in total which is below max bit count for the `poly_modulus_degree`: `CoeffModulus::MaxBitCount(8192)` returns `218`.
+The values I have used are `{60, 40, 40, 60}` with a `poly_modulus_degree = 8192` which yields a `coeff_modulus` of `200 bits` in total which is below max bit count for the `poly_modulus_degree`: `CoeffModulus::MaxBitCount(8192)` returns `218`. The initial scale is set to `2^40`. At the last level, this leaves us `60-40 = 20 bits` of precision before the decimal point and around `10 to 20 bits` of precision after the decimal point. Since our intermediate primes are `40 bits` which is very close to `2^40` we are able to achieve stabilization as described earlier.
+
+In the example, we're evaluating the polynomial `PI*x^3 + 0.4x + 1`. When computing `x^2` (to compute `x^3` later), you will notice that the scale will grow to `2^80`. After rescaling the new scale should be close to `2^40` (NOT equal).
