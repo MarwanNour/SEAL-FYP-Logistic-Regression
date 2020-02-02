@@ -1,5 +1,5 @@
 # SEALDemo
-Microsoft SEAL Demo based on the examples already provided in the library. 
+A Microsoft SEAL Demo based on the examples already provided in the library. 
 
 ## Setup for Linux
 First, make sure you have Microsoft SEAL installed. Follow the tutorial on https://github.com/Microsoft/SEAL.
@@ -13,6 +13,7 @@ Refer to the Windows installation of SEAL in https://github.com/Microsoft/SEAL.
 Place the `.cpp` file(s) in the Source Files, and then build the project.
 
 ## About the C++ files
+All the explanations are based on the comments and code from the SEAL examples.
 ### 1 - BFV
 The first file is the `1_bfv.cpp`. It contains an example on how to use the bfv scheme in SEAL. The BFV encryption scheme is used mainly to encrypt integers. It requires three parameters:
 - Degree of Polynomial Modulus: `poly_modulus_degree`
@@ -41,3 +42,15 @@ The `modulus switching chain` is a chain of other encryption parameters derived 
 
 
 `Modulus Switching` is a technique of changing the ciphertext parameters down the chain. You may want to use this to gain computational performance from having smaller parameters. This method may reduce your ciphertext noise budget. If there is no need to perform further computations on a ciphertext, you can switch it down to the smallest (last) set of parameters in the chain before decrypting it.
+
+### 4 - CKKS
+The `CKKS` encryption scheme focuses on performing operations on encrypted real and complex numbers. Homomorphic multiplication in CKKS causes the `scales` in ciphertexts to grow. The scale can be considered as the bit precision of the encoding. The scale must not get too close to the total size of `coeff_modulus`. You can rescale to reduce the scale and stabilize the scale expansion. `Rescaling` is a type of `modulus switching`, it removes the last of the primes from the `coeff_modulus` but it scales down the ciphertext by the removed prime.
+
+Suppose that the scale in a CKKS ciphertext is `S` and the last prime in the `coeff_modulus` is `P`. Rescaling to the next level changes the scale to `S/P` and removes the prime `P` from the `coeff_modulus` (just like in Modulus Switching). A good strategy is to set the initial scale `S` and primes `P_i` to be very close to each other. If ciphertexts have scale `S` before multiplication then they will have scale `S^2` after multiplication and then `S^2/P_i` after rescaling thus `S^2/P_i` will be close to S again. Generally, for a circuit of depth `D`, we need to rescale `D` times, i.e., we need to be able to remove `D` primes from the `coeff_modulus`. Once we have only one prime left in the `coeff_modulus`, the remaining prime must be larger than `S` by a few bits to preserve the pre-decimal-point value of the plaintext.
+
+Therefore a generally good strategy is to choose the parameters for the CKKS scheme as follows:
+- Choose a `60 bit` prime as as the first prime in `coeff_modulus` giving us the highest precision when decrypting
+- Choose another `60 bit` prime as the last prime in `coeff_modulus`
+- Choose the intermediate primes to be close to each other
+
+The values I have used are `{60, 40, 40, 60}` with a `poly_modulus_degree = 8192` which yields a `coeff_modulus` of `200 bits` in total which is below max bit count for the `poly_modulus_degree`: `CoeffModulus::MaxBitCount(8192)` returns `218`.
