@@ -61,3 +61,6 @@ In the example, we're evaluating the polynomial `PI*x^3 + 0.4x + 1`. When comput
 
 ### 5 - Rotation
 `Rotation` can be used in both BFV and CKKS schemes. It is a mechanism that allows you to rotate the encrypted vectors cyclically. It requires special keys called `Galois keys` which can be generated from the `KeyGenerator` class. It is possible to rotate the columns and rotate the rows. Rotations usually don't consume any noise budget. However, this is only the case when the special prime is at least as large as the other primes. The same applies for `relinearization`. 
+
+### Vector Ops
+The `vector_ops.cpp` file consists of a small performance test for BFV and CKKS with `poly_modulus_degree = 8192`.
