@@ -8,6 +8,7 @@ Makefile
 5_rotation
 vector_ops
 benchmark
+*.dat
 .vscode
 !.vscode/settings.json
 !.vscode/tasks.json

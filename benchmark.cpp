@@ -53,14 +53,13 @@ inline void print_vector(std::vector<T> vec, std::size_t print_size = 4, int pre
     std::cout.copyfmt(old_fmt);
 }
 
-void ckksBenchmark()
+void ckksBenchmark(size_t poly_modulus_degree)
 {
     cout << "------CKKS TEST------\n"
          << endl;
 
     // Set params
     EncryptionParameters params(scheme_type::CKKS);
-    size_t poly_modulus_degree = 8192;
     params.set_poly_modulus_degree(poly_modulus_degree);
     params.set_coeff_modulus(CoeffModulus::BFVDefault(poly_modulus_degree));
     auto context = SEALContext::Create(params);
@@ -80,26 +79,32 @@ void ckksBenchmark()
 
     size_t slot_count = ckks_encoder.slot_count();
     cout << "Slot count : " << slot_count << endl;
+
+
+    /*
+    3 sets of vectors:
+    1st set: sizes = 10
+    2nd set: sizes = 100
+    3rd set: sizes = 1000
+    */
+   
+    // First Set
     // First vector
-    vector<double> pod_vec1(slot_count, 0);
-    for (unsigned int i = 0; i < slot_count; i++)
+    vector<double> pod_vec1(10, 0);
+    for (unsigned int i = 0; i < 10; i++)
     {
         pod_vec1[i] = static_cast<double>(i);
     }
-
     print_vector(pod_vec1);
-
     // Second vector
-    vector<double> pod_vec2(slot_count, 0);
-    for (unsigned int i = 0; i < slot_count; i++)
+    vector<double> pod_vec2(10, 0);
+    for (unsigned int i = 0; i < 10; i++)
     {
         pod_vec2[i] = static_cast<double>((i % 2) + 1);
     }
-
     print_vector(pod_vec2);
 
     // Encode the pod_vec1 and pod_vec2
-
     Plaintext plain_vec1, plain_vec2;
     // Scale used here sqrt of last coeff modulus
     double scale = sqrt(static_cast<double>(params.coeff_modulus().back().value()));
@@ -108,25 +113,23 @@ void ckksBenchmark()
 
     // Encrypt plain_vec1
     cout << "Encrypt plain_vec1 to cipher_vec1:" << endl;
-    Ciphertext cipher_vec1;
+    Ciphertext cipher_vec1, cipher_vec2;
     encryptor.encrypt(plain_vec1, cipher_vec1);
-    // cout << "\t+ NOISE budget in cipher_vec1: " << decryptor.invariant_noise_budget(cipher_vec1) << " bits" << endl;
-
-    // Compute (cipher_vec1 + plain_vec2)^2
-    cout << "Computing (cipher_vec1 + plain_vec2)^2" << endl;
+    encryptor.encrypt(plain_vec2, cipher_vec2);
+    // Compute (cipher1 + plain2)
+    // Compute (cipher1 + cipher2)
+    // Compute (cipher1 * plain2)
+    // Compute (cipher1 * cipher2)
+    cout << "Compute (cipher1 + plain2)" << endl;
 
     // TIME START
-    auto start = chrono::high_resolution_clock::now();
+    auto start_set_1 = chrono::high_resolution_clock::now();
 
     evaluator.add_plain_inplace(cipher_vec1, plain_vec2);
-    evaluator.square_inplace(cipher_vec1);
-    evaluator.relinearize_inplace(cipher_vec1, relin_keys);
 
     // TIME END
-    auto stop = chrono::high_resolution_clock::now();
-    auto duration = chrono::duration_cast<chrono::microseconds>(stop - start);
-
-    // cout << "\t+ NOISE budget in result: " << decryptor.invariant_noise_budget(cipher_vec1) << " bits" << endl;
+    auto stop_set_1 = chrono::high_resolution_clock::now();
+    auto duration = chrono::duration_cast<chrono::microseconds>(stop_set_1 - start_set_1);
 
     // Decrypt and Decode
     Plaintext plain_result;
@@ -153,6 +156,7 @@ int main()
 
     // Run the tests
 
+/*
     // Set output file
     string filename_1 = "bench_4096.dat";
     ofstream outf_1(filename_1);
@@ -248,5 +252,6 @@ int main()
     // Close the file
     outf_3.close();
 
+*/
     return 0;
 }
