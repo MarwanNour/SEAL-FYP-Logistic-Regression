@@ -7,6 +7,7 @@ Makefile
 4_ckks
 5_rotation
 vector_ops
+benchmark
 .vscode
 !.vscode/settings.json
 !.vscode/tasks.json
