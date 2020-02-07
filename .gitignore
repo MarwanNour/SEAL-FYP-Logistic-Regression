@@ -10,6 +10,7 @@ vector_ops
 benchmark
 *.dat
 *.html
+*.p
 .vscode
 !.vscode/settings.json
 !.vscode/tasks.json

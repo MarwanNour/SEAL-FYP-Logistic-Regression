@@ -107,36 +107,36 @@ void ckksBenchmark(size_t poly_modulus_degree)
     outscript << "set title \"CKKS Benchmark " << to_string(poly_modulus_degree) << "\"" << endl;
     outscript << "set xlabel 'Input Vector Size'" << endl;
     outscript << "set ylabel 'Time (microseconds)'" << endl;
-    
-    outscript << "# Set the styling " << endl;
+
+    outscript << "\n# Set the styling " << endl;
     outscript << "set style line 1\\\n"
               << "linecolor rgb '#0060ad'\\\n"
               << "linetype 1 linewidth 2\\\n"
-              << "pointtype 7 pointsize 1.5"
+              << "pointtype 7 pointsize 1.5\n"
               << endl;
 
     outscript << "set style line 2\\\n"
               << "linecolor rgb '#dd181f'\\\n"
               << "linetype 1 linewidth 2\\\n"
-              << "pointtype 5 pointsize 1.5"
+              << "pointtype 5 pointsize 1.5\n"
               << endl;
 
     outscript << "set style line 3\\\n"
               << "linecolor rgb '#00FF00'\\\n"
               << "linetype 1 linewidth 2\\\n"
-              << "pointtype 6 pointsize 1.5"
+              << "pointtype 6 pointsize 1.5\n"
               << endl;
 
     outscript << "set style line 4\\\n"
               << "linecolor rgb '#EC00EC'\\\n"
               << "linetype 1 linewidth 2\\\n"
-              << "pointtype 4 pointsize 1.5"
+              << "pointtype 4 pointsize 1.5\n"
               << endl;
 
-    outscript << "plot 'bench_" << to_string(poly_modulus_degree) << ".dat' index 0 with linespoints ls 1, \\\n"
-              << "'' index 1 with linespoints ls 2, \\\n"
-              << "'' index 2 with linespoints ls 3, \\\n"
-              << "'' index 3 with linespoints ls 4";
+    outscript << "\nplot 'bench_" << to_string(poly_modulus_degree) << ".dat' index 0 title \"C1 + P2\" with linespoints ls 1, \\\n"
+              << "'' index 1 title \"C1 + C2\"  with linespoints ls 2, \\\n"
+              << "'' index 2 title \"C1 * P2\"  with linespoints ls 3, \\\n"
+              << "'' index 3 title \"C1 * C2\"  with linespoints ls 4";
     // Close script
     outscript.close();
 
@@ -300,7 +300,8 @@ void ckksBenchmark(size_t poly_modulus_degree)
     outf << "1000\t\t" << duration_comp1_set3.count() << endl;
 
     cout << endl;
-    outf << endl;
+    outf << "\n"
+         << endl;
     // ------------------ (cipher1 + cipher2) ---------------
     cout << "\n------------------ SECOND OPERATION ------------------\n"
          << endl;
@@ -376,7 +377,9 @@ void ckksBenchmark(size_t poly_modulus_degree)
     outf << "1000\t\t" << duration_comp2_set3.count() << endl;
 
     cout << endl;
-    outf << endl;
+    outf << "\n"
+         << endl;
+
     // ------------------ (cipher1 * plain2) ---------------
     cout << "\n------------------ THIRD OPERATION ------------------\n"
          << endl;
@@ -452,7 +455,9 @@ void ckksBenchmark(size_t poly_modulus_degree)
     outf << "1000\t\t" << duration_comp3_set3.count() << endl;
 
     cout << endl;
-    outf << endl;
+    outf << "\n"
+         << endl;
+
     // ------------------ (cipher1 * cipher2) ---------------
     cout << "\n------------------ FOURTH OPERATION ------------------\n"
          << endl;
@@ -527,7 +532,8 @@ void ckksBenchmark(size_t poly_modulus_degree)
     outf << "1000\t\t" << duration_comp4_set3.count() << endl;
 
     cout << endl;
-    outf << endl;
+    outf << "\n"
+         << endl;
 
     // Close the file
     outf.close();
