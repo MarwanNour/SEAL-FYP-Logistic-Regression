@@ -64,3 +64,8 @@ In the example, we're evaluating the polynomial `PI*x^3 + 0.4x + 1`. When comput
 
 ### Vector Ops
 The `vector_ops.cpp` file consists of a small performance test for BFV and CKKS with `poly_modulus_degree = 8192`.
+
+### Benchmark
+The `benchmark.cpp` file consists of performance tests for CKKS with 3 sets of input vectors of sizes `10, 100, 1000`.
+
+Running `benchmark` (after building the project) will generate a `bench_<your poly modulus degree>.dat` file and a corresponding `script_<your poly modulus degree>.p` file that can be used in GNUPlot. If you have gnuplot installed you can run the script file with `gnuplot "script_<your poly modulus degree>"`. This will generate a `canvas_"<your poly modulus degree>.html"` with a graph of the output.
