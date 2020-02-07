@@ -8,7 +8,7 @@ using namespace seal;
 
 // Helper function that prints a vector of floats
 template <typename T>
-inline void print_vector(std::vector<T> vec, std::size_t print_size = 4, int prec = 3)
+inline void print_vector(std::vector<T> vec, std::size_t print_size = 4, int prec = 4)
 {
     /*
     Save the formatting information for std::cout.
@@ -78,6 +78,67 @@ void ckksBenchmark(size_t poly_modulus_degree)
 
     size_t slot_count = ckks_encoder.slot_count();
     cout << "Slot count : " << slot_count << endl;
+
+    // Set output file
+    string filename = "bench_" + to_string(poly_modulus_degree) + ".dat";
+    ofstream outf(filename);
+
+    // Handle file error
+    if (!outf)
+    {
+        cerr << "Couldn't open file: " << filename << endl;
+        exit(1);
+    }
+
+    // Set output script
+    string script = "script_" + to_string(poly_modulus_degree) + ".p";
+    ofstream outscript(script);
+
+    // Handle script error
+    if (!outscript)
+    {
+        cerr << "Couldn't open file: " << script << endl;
+        exit(1);
+    }
+    // Write to script
+    outscript << "# Set the output terminal" << endl;
+    outscript << "set terminal canvas" << endl;
+    outscript << "set output \"canvas_" << to_string(poly_modulus_degree) << ".html\"" << endl;
+    outscript << "set title \"CKKS Benchmark " << to_string(poly_modulus_degree) << "\"" << endl;
+    outscript << "set xlabel 'Input Vector Size'" << endl;
+    outscript << "set ylabel 'Time (microseconds)'" << endl;
+    
+    outscript << "# Set the styling " << endl;
+    outscript << "set style line 1\\\n"
+              << "linecolor rgb '#0060ad'\\\n"
+              << "linetype 1 linewidth 2\\\n"
+              << "pointtype 7 pointsize 1.5"
+              << endl;
+
+    outscript << "set style line 2\\\n"
+              << "linecolor rgb '#dd181f'\\\n"
+              << "linetype 1 linewidth 2\\\n"
+              << "pointtype 5 pointsize 1.5"
+              << endl;
+
+    outscript << "set style line 3\\\n"
+              << "linecolor rgb '#00FF00'\\\n"
+              << "linetype 1 linewidth 2\\\n"
+              << "pointtype 6 pointsize 1.5"
+              << endl;
+
+    outscript << "set style line 4\\\n"
+              << "linecolor rgb '#EC00EC'\\\n"
+              << "linetype 1 linewidth 2\\\n"
+              << "pointtype 4 pointsize 1.5"
+              << endl;
+
+    outscript << "plot 'bench_" << to_string(poly_modulus_degree) << ".dat' index 0 with linespoints ls 1, \\\n"
+              << "'' index 1 with linespoints ls 2, \\\n"
+              << "'' index 2 with linespoints ls 3, \\\n"
+              << "'' index 3 with linespoints ls 4";
+    // Close script
+    outscript.close();
 
     /*
     3 sets of vectors:
@@ -169,6 +230,8 @@ void ckksBenchmark(size_t poly_modulus_degree)
          << endl;
     // Compute (cipher1 + plain2) for set 1
     cout << "Compute (cipher1 + plain2) for set 1" << endl;
+    outf << "# index 0" << endl;
+    outf << "# C1 + P2" << endl;
 
     // TIME START
     auto start_comp1_set1 = chrono::high_resolution_clock::now();
@@ -188,6 +251,7 @@ void ckksBenchmark(size_t poly_modulus_degree)
     print_vector(vec_result1_set1);
 
     cout << "\nTime to compute (cipher1 + plain2): " << duration_comp1_set1.count() << " microseconds" << endl;
+    outf << "10\t\t" << duration_comp1_set1.count() << endl;
 
     // Compute (cipher1 + plain2) for set 2
     cout << "Compute (cipher1 + plain2) for set 2" << endl;
@@ -210,6 +274,7 @@ void ckksBenchmark(size_t poly_modulus_degree)
     print_vector(vec_result1_set2);
 
     cout << "\nTime to compute (cipher1 + plain2): " << duration_comp1_set2.count() << " microseconds" << endl;
+    outf << "100\t\t" << duration_comp1_set2.count() << endl;
 
     // Compute (cipher1 + plain2) for set 3
     cout << "Compute (cipher1 + plain2) for set 3" << endl;
@@ -232,14 +297,17 @@ void ckksBenchmark(size_t poly_modulus_degree)
     print_vector(vec_result1_set3);
 
     cout << "\nTime to compute (cipher1 + plain2): " << duration_comp1_set3.count() << " microseconds" << endl;
+    outf << "1000\t\t" << duration_comp1_set3.count() << endl;
 
     cout << endl;
-
+    outf << endl;
     // ------------------ (cipher1 + cipher2) ---------------
     cout << "\n------------------ SECOND OPERATION ------------------\n"
          << endl;
     // Compute (cipher1 + cipher2) for set 1
     cout << "Compute (cipher1 + cipher2) for set 1" << endl;
+    outf << "# index 1" << endl;
+    outf << "# C1 + C2" << endl;
 
     // TIME START
     auto start_comp2_set1 = chrono::high_resolution_clock::now();
@@ -259,6 +327,7 @@ void ckksBenchmark(size_t poly_modulus_degree)
     print_vector(vec_result2_set1);
 
     cout << "\nTime to compute (cipher1 + cipher2): " << duration_comp2_set1.count() << " microseconds" << endl;
+    outf << "10\t\t" << duration_comp2_set1.count() << endl;
 
     // Compute (cipher1 + cipher2) for set 2
     cout << "Compute (cipher1 + cipher2) for set 2" << endl;
@@ -281,6 +350,7 @@ void ckksBenchmark(size_t poly_modulus_degree)
     print_vector(vec_result2_set2);
 
     cout << "\nTime to compute (cipher1 + cipher2): " << duration_comp2_set2.count() << " microseconds" << endl;
+    outf << "100\t\t" << duration_comp2_set2.count() << endl;
 
     // Compute (cipher1 + cipher2) for set 3
     cout << "Compute (cipher1 + cipher2) for set 3" << endl;
@@ -303,16 +373,18 @@ void ckksBenchmark(size_t poly_modulus_degree)
     print_vector(vec_result2_set3);
 
     cout << "\nTime to compute (cipher1 + cipher2): " << duration_comp2_set3.count() << " microseconds" << endl;
+    outf << "1000\t\t" << duration_comp2_set3.count() << endl;
 
     cout << endl;
-
+    outf << endl;
     // ------------------ (cipher1 * plain2) ---------------
     cout << "\n------------------ THIRD OPERATION ------------------\n"
          << endl;
 
     // Compute (cipher1 + plain2) for set 1
     cout << "Compute (cipher1 * plain2) for set 1" << endl;
-
+    outf << "# index 2" << endl;
+    outf << "# C1 * P2" << endl;
     // TIME START
     auto start_comp3_set1 = chrono::high_resolution_clock::now();
 
@@ -331,6 +403,7 @@ void ckksBenchmark(size_t poly_modulus_degree)
     print_vector(vec_result3_set1);
 
     cout << "\nTime to compute (cipher1 * plain2): " << duration_comp3_set1.count() << " microseconds" << endl;
+    outf << "10\t\t" << duration_comp3_set1.count() << endl;
 
     // Compute (cipher1 * plain2) for set 2
     cout << "Compute (cipher1 * plain2) for set 2" << endl;
@@ -353,6 +426,7 @@ void ckksBenchmark(size_t poly_modulus_degree)
     print_vector(vec_result3_set2);
 
     cout << "\nTime to compute (cipher1 * plain2): " << duration_comp3_set2.count() << " microseconds" << endl;
+    outf << "100\t\t" << duration_comp3_set2.count() << endl;
 
     // Compute (cipher1 * plain2) for set 3
     cout << "Compute (cipher1 * plain2) for set 3" << endl;
@@ -375,15 +449,17 @@ void ckksBenchmark(size_t poly_modulus_degree)
     print_vector(vec_result3_set3);
 
     cout << "\nTime to compute (cipher1 * plain2): " << duration_comp3_set3.count() << " microseconds" << endl;
+    outf << "1000\t\t" << duration_comp3_set3.count() << endl;
 
     cout << endl;
-
+    outf << endl;
     // ------------------ (cipher1 * cipher2) ---------------
     cout << "\n------------------ FOURTH OPERATION ------------------\n"
          << endl;
     // Compute (cipher1 * cipher2) for set 1
     cout << "Compute (cipher1 * cipher2) for set 1" << endl;
-
+    outf << "# index 3" << endl;
+    outf << "# C1 * C2" << endl;
     // TIME START
     auto start_comp4_set1 = chrono::high_resolution_clock::now();
 
@@ -402,6 +478,7 @@ void ckksBenchmark(size_t poly_modulus_degree)
     print_vector(vec_result4_set1);
 
     cout << "\nTime to compute (cipher1 * cipher2): " << duration_comp4_set1.count() << " microseconds" << endl;
+    outf << "10\t\t" << duration_comp4_set1.count() << endl;
 
     // Compute (cipher1 * cipher2) for set 2
     cout << "Compute (cipher1 * cipher2) for set 2" << endl;
@@ -424,6 +501,7 @@ void ckksBenchmark(size_t poly_modulus_degree)
     print_vector(vec_result4_set2);
 
     cout << "\nTime to compute (cipher1 * cipher2): " << duration_comp4_set2.count() << " microseconds" << endl;
+    outf << "100\t\t" << duration_comp4_set2.count() << endl;
 
     // Compute (cipher1 * cipher2) for set 3
     cout << "Compute (cipher1 * cipher2) for set 3" << endl;
@@ -446,8 +524,13 @@ void ckksBenchmark(size_t poly_modulus_degree)
     print_vector(vec_result4_set3);
 
     cout << "\nTime to compute (cipher1 * cipher2): " << duration_comp4_set3.count() << " microseconds" << endl;
+    outf << "1000\t\t" << duration_comp4_set3.count() << endl;
 
     cout << endl;
+    outf << endl;
+
+    // Close the file
+    outf.close();
 }
 
 int main()
@@ -465,102 +548,5 @@ int main()
     // Run the tests
     ckksBenchmark(poly_modulus_degree);
 
-    /*
-    // Set output file
-    string filename_1 = "bench_4096.dat";
-    ofstream outf_1(filename_1);
-    // Handle file error
-    if (!outf_1)
-    {
-        cerr << "Couldn't open file: " << filename_1 << endl;
-        exit(1);
-    }
-
-    // Write to file
-    outf_1 << "2"
-         << "\t\t"
-         << "230" << endl;
-    outf_1 << "3"
-         << "\t\t"
-         << "400" << endl;
-    outf_1 << "5"
-         << "\t\t"
-         << "230" << endl;
-    outf_1 << "6"
-         << "\t\t"
-         << "400" << endl;
-
-    // Close the file
-    outf_1.close();
-
-    // Case 2 : poly_modulus_degree = 8192
-    poly_modulus_degree = 8192;
-    params.set_poly_modulus_degree(poly_modulus_degree);
-    params.set_coeff_modulus(CoeffModulus::BFVDefault(poly_modulus_degree));
-
-    // Run the tests
-
-    // Set output file
-    string filename_2 = "bench_8192.dat";
-    ofstream outf_2(filename_2);
-    // Handle file error
-    if (!outf_2)
-    {
-        cerr << "Couldn't open file: " << filename_2 << endl;
-        exit(1);
-    }
-
-    // Write to file
-    outf_2 << "2"
-         << "\t\t"
-         << "230" << endl;
-    outf_2 << "3"
-         << "\t\t"
-         << "400" << endl;
-    outf_2 << "5"
-         << "\t\t"
-         << "230" << endl;
-    outf_2 << "6"
-         << "\t\t"
-         << "400" << endl;
-
-    // Close the file
-    outf_2.close();
-
-    // Case 3 : poly_modulus_degree = 16384
-    poly_modulus_degree = 16384;
-    params.set_poly_modulus_degree(poly_modulus_degree);
-    params.set_coeff_modulus(CoeffModulus::BFVDefault(poly_modulus_degree));
-
-    // Run the tests
-
-    // Set output file
-    string filename_3 = "bench_16384.dat";
-    ofstream outf_3(filename_3);
-    // Handle file error
-    if (!outf_3)
-    {
-        cerr << "Couldn't open file: " << filename_3 << endl;
-        exit(1);
-    }
-
-    // Write to file
-    outf_3 << "2"
-         << "\t\t"
-         << "230" << endl;
-    outf_3 << "3"
-         << "\t\t"
-         << "400" << endl;
-    outf_3 << "5"
-         << "\t\t"
-         << "230" << endl;
-    outf_3 << "6"
-         << "\t\t"
-         << "400" << endl;
-
-    // Close the file
-    outf_3.close();
-
-*/
     return 0;
 }
