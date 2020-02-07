@@ -9,6 +9,7 @@ Makefile
 vector_ops
 benchmark
 *.dat
+*.html
 .vscode
 !.vscode/settings.json
 !.vscode/tasks.json
