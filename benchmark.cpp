@@ -53,6 +53,30 @@ inline void print_vector(std::vector<T> vec, std::size_t print_size = 4, int pre
     std::cout.copyfmt(old_fmt);
 }
 
+// Helper function that prints a matrix (vector of vectors)
+template <typename T>
+inline void print_full_matrix(vector<vector<T>> matrix, int size, int precision = 3)
+{
+    // save formatting for cout
+    ios old_fmt(nullptr);
+    old_fmt.copyfmt(cout);
+    cout << fixed << setprecision(precision);
+
+    for (unsigned int i = 0; i < size; i++)
+    {
+        cout << "[";
+        for (unsigned int j = 0; j < size - 1; j++)
+        {
+            cout << matrix[i][j] << ", ";
+        }
+        cout << matrix[i][size - 1];
+        cout << "]" << endl;
+    }
+    cout << endl;
+    // restore old cout formatting
+    cout.copyfmt(old_fmt);
+}
+
 void ckksBenchmark(size_t poly_modulus_degree)
 {
     cout << "------CKKS TEST------\n"
@@ -539,6 +563,138 @@ void ckksBenchmark(size_t poly_modulus_degree)
     outf.close();
 }
 
+void ckksBenchmarkMatrix(size_t poly_modulus_degree)
+{
+    cout << "------CKKS TEST------\n"
+         << endl;
+
+    // Set params
+    EncryptionParameters params(scheme_type::CKKS);
+    params.set_poly_modulus_degree(poly_modulus_degree);
+    params.set_coeff_modulus(CoeffModulus::BFVDefault(poly_modulus_degree));
+    auto context = SEALContext::Create(params);
+
+    // Generate keys, encryptor, decryptor and evaluator
+    KeyGenerator keygen(context);
+    PublicKey pk = keygen.public_key();
+    SecretKey sk = keygen.secret_key();
+
+    Encryptor encryptor(context, pk);
+    Evaluator evaluator(context);
+    Decryptor decryptor(context, sk);
+
+    // Create CKKS encoder
+    CKKSEncoder ckks_encoder(context);
+
+    size_t slot_count = ckks_encoder.slot_count();
+    cout << "Slot count : " << slot_count << endl;
+
+    // ------------- FIRST SET -------------
+    // First Matrix
+    int set_size1 = 10;
+    vector<vector<double>> pod_matrix1_set1(set_size1, vector<double>(set_size1));
+    double k = 0.0;
+    for (unsigned int i = 0; i < set_size1; i++)
+    {
+        for (unsigned int j = 0; j < set_size1; j++)
+        {
+
+            pod_matrix1_set1[i][j] = k;
+            // cout << "k = " << k;
+            k++;
+        }
+    }
+    print_full_matrix(pod_matrix1_set1, set_size1);
+
+    // Second Matrix
+    vector<vector<double>> pod_matrix2_set1(set_size1, vector<double>(set_size1));
+    k = 0.0;
+    for (unsigned int i = 0; i < set_size1; i++)
+    {
+        for (unsigned int j = 0; j < set_size1; j++)
+        {
+            pod_matrix2_set1[i][j] = static_cast<double>((int(k) % 2) + 1);
+            k++;
+        }
+    }
+    print_full_matrix(pod_matrix2_set1, set_size1);
+
+    // Encode the matrices
+    vector<Plaintext> plain_matrix1_set1(set_size1), plain_matrix2_set1(set_size1);
+
+    cout << "pre-encoding1" << endl;
+
+    double scale = sqrt(static_cast<double>(params.coeff_modulus().back().value()));
+
+    cout << "pre-encoding2" << endl;
+
+    // First set encode
+    for (unsigned int i = 0; i < pod_matrix1_set1.size(); i++)
+    {
+        ckks_encoder.encode(pod_matrix1_set1[i], scale, plain_matrix1_set1[i]);
+    }
+    for (unsigned int i = 0; i < pod_matrix2_set1.size(); i++)
+    {
+        ckks_encoder.encode(pod_matrix2_set1[i], scale, plain_matrix2_set1[i]);
+    }
+
+    cout << "post-encoding" << endl;
+
+    // Encrypt the matrices
+    vector<Ciphertext> cipher_matrix1_set1(set_size1), cipher_matrix2_set1(set_size1);
+    // First set cipher
+    for (unsigned int i = 0; i < plain_matrix1_set1.size(); i++)
+    {
+        encryptor.encrypt(plain_matrix1_set1[i], cipher_matrix1_set1[i]);
+    }
+    for (unsigned int i = 0; i < plain_matrix2_set1.size(); i++)
+    {
+        encryptor.encrypt(plain_matrix2_set1[i], cipher_matrix2_set1[i]);
+    }
+
+    // Create ciphertext output
+    vector<Ciphertext> cipher_result1_set1(set_size1);
+
+    cout << "a" << endl;
+
+    // ------------------ (cipher1 + plain2) ---------------
+    cout << "\n------------------ FIRST OPERATION ------------------\n"
+         << endl;
+    // Compute (cipher1 + plain2) for set 1
+    cout << "Compute (cipher1 + plain2) for set 1" << endl;
+
+    // TIME START
+    auto start_comp1_set1 = chrono::high_resolution_clock::now();
+
+    for (unsigned int i = 0; i < cipher_matrix1_set1.size(); i++)
+    {
+        evaluator.add_plain(cipher_matrix1_set1[i], plain_matrix2_set1[i], cipher_result1_set1[i]);
+    }
+
+    cout << "b" << endl;
+
+    // TIME END
+    auto stop_comp1_set1 = chrono::high_resolution_clock::now();
+    auto duration_comp1_set1 = chrono::duration_cast<chrono::microseconds>(stop_comp1_set1 - start_comp1_set1);
+
+    cout << "c" << endl;
+
+    // Decrypt and Decode
+    vector<Plaintext> plain_result1_set1(set_size1);
+    cout << "Decrypt and decode the result" << endl;
+    for (unsigned int i = 0; i < cipher_result1_set1.size(); i++)
+    {
+        decryptor.decrypt(cipher_result1_set1[i], plain_result1_set1[i]);
+    }
+    vector<vector<double>> matrix_result1_set1(set_size1, vector<double>(set_size1));
+    for (unsigned int i = 0; i < plain_result1_set1.size(); i++)
+    {
+        ckks_encoder.decode(plain_result1_set1[i], matrix_result1_set1[i]);
+    }
+
+    print_full_matrix(matrix_result1_set1, 10);
+}
+
 int main()
 {
 
@@ -552,7 +708,8 @@ int main()
     params.set_coeff_modulus(CoeffModulus::BFVDefault(poly_modulus_degree));
 
     // Run the tests
-    ckksBenchmark(poly_modulus_degree);
+    // ckksBenchmark(poly_modulus_degree);
+    ckksBenchmarkMatrix(poly_modulus_degree);
 
     return 0;
 }
