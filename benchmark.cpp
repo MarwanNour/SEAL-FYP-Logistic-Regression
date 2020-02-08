@@ -252,10 +252,11 @@ void ckksBenchmark(size_t poly_modulus_degree)
     // ------------------ (cipher1 + plain2) ---------------
     cout << "\n------------------ FIRST OPERATION ------------------\n"
          << endl;
-    // Compute (cipher1 + plain2) for set 1
-    cout << "Compute (cipher1 + plain2) for set 1" << endl;
     outf << "# index 0" << endl;
     outf << "# C1 + P2" << endl;
+
+    // Compute (cipher1 + plain2) for set 1
+    cout << "Compute (cipher1 + plain2) for set 1" << endl;
 
     // TIME START
     auto start_comp1_set1 = chrono::high_resolution_clock::now();
@@ -565,7 +566,7 @@ void ckksBenchmark(size_t poly_modulus_degree)
 
 void ckksBenchmarkMatrix(size_t poly_modulus_degree)
 {
-    cout << "------CKKS TEST------\n"
+    cout << "------CKKS Matrix TEST------\n"
          << endl;
 
     // Set params
@@ -588,6 +589,67 @@ void ckksBenchmarkMatrix(size_t poly_modulus_degree)
 
     size_t slot_count = ckks_encoder.slot_count();
     cout << "Slot count : " << slot_count << endl;
+
+    // Set output file
+    string filename = "bench_matrix_" + to_string(poly_modulus_degree) + ".dat";
+    ofstream outf(filename);
+
+    // Handle file error
+    if (!outf)
+    {
+        cerr << "Couldn't open file: " << filename << endl;
+        exit(1);
+    }
+
+    // Set output script
+    string script = "script_matrix_" + to_string(poly_modulus_degree) + ".p";
+    ofstream outscript(script);
+
+    // Handle script error
+    if (!outscript)
+    {
+        cerr << "Couldn't open file: " << script << endl;
+        exit(1);
+    }
+    // Write to script
+    outscript << "# Set the output terminal" << endl;
+    outscript << "set terminal canvas" << endl;
+    outscript << "set output \"canvas_matrix_" << to_string(poly_modulus_degree) << ".html\"" << endl;
+    outscript << "set title \"CKKS Matrix Benchmark " << to_string(poly_modulus_degree) << "\"" << endl;
+    outscript << "set xlabel 'Input Matrix Size (NxN)'" << endl;
+    outscript << "set ylabel 'Time (microseconds)'" << endl;
+
+    outscript << "\n# Set the styling " << endl;
+    outscript << "set style line 1\\\n"
+              << "linecolor rgb '#0060ad'\\\n"
+              << "linetype 1 linewidth 2\\\n"
+              << "pointtype 7 pointsize 1.5\n"
+              << endl;
+
+    outscript << "set style line 2\\\n"
+              << "linecolor rgb '#dd181f'\\\n"
+              << "linetype 1 linewidth 2\\\n"
+              << "pointtype 5 pointsize 1.5\n"
+              << endl;
+
+    outscript << "set style line 3\\\n"
+              << "linecolor rgb '#00FF00'\\\n"
+              << "linetype 1 linewidth 2\\\n"
+              << "pointtype 6 pointsize 1.5\n"
+              << endl;
+
+    outscript << "set style line 4\\\n"
+              << "linecolor rgb '#EC00EC'\\\n"
+              << "linetype 1 linewidth 2\\\n"
+              << "pointtype 4 pointsize 1.5\n"
+              << endl;
+
+    outscript << "\nplot 'bench_" << to_string(poly_modulus_degree) << ".dat' index 0 title \"C1 + P2\" with linespoints ls 1, \\\n"
+              << "'' index 1 title \"C1 + C2\"  with linespoints ls 2, \\\n"
+              << "'' index 2 title \"C1 * P2\"  with linespoints ls 3, \\\n"
+              << "'' index 3 title \"C1 * C2\"  with linespoints ls 4";
+    // Close script
+    outscript.close();
 
     // ------------- FIRST SET -------------
     // First Matrix
@@ -619,8 +681,71 @@ void ckksBenchmarkMatrix(size_t poly_modulus_degree)
     }
     print_full_matrix(pod_matrix2_set1, set_size1);
 
+    // ------------- Second SET -------------
+    // First Matrix
+    int set_size2 = 100;
+    vector<vector<double>> pod_matrix1_set2(set_size2, vector<double>(set_size2));
+    k = 0.0;
+    for (unsigned int i = 0; i < set_size2; i++)
+    {
+        for (unsigned int j = 0; j < set_size2; j++)
+        {
+
+            pod_matrix1_set2[i][j] = k;
+            // cout << "k = " << k;
+            k++;
+        }
+    }
+    print_full_matrix(pod_matrix1_set2, set_size2);
+
+    // Second Matrix
+    vector<vector<double>> pod_matrix2_set2(set_size2, vector<double>(set_size2));
+    k = 0.0;
+    for (unsigned int i = 0; i < set_size2; i++)
+    {
+        for (unsigned int j = 0; j < set_size2; j++)
+        {
+            pod_matrix2_set2[i][j] = static_cast<double>((int(k) % 2) + 1);
+            k++;
+        }
+    }
+    print_full_matrix(pod_matrix2_set2, set_size2);
+
+    // ------------- THIRD SET -------------
+    // First Matrix
+    int set_size3 = 1000;
+    vector<vector<double>> pod_matrix1_set3(set_size3, vector<double>(set_size3));
+    k = 0.0;
+    for (unsigned int i = 0; i < set_size3; i++)
+    {
+        for (unsigned int j = 0; j < set_size3; j++)
+        {
+
+            pod_matrix1_set3[i][j] = k;
+            // cout << "k = " << k;
+            k++;
+        }
+    }
+    print_full_matrix(pod_matrix1_set3, set_size3);
+
+    // Second Matrix
+    vector<vector<double>> pod_matrix2_set3(set_size3, vector<double>(set_size3));
+    k = 0.0;
+    for (unsigned int i = 0; i < set_size3; i++)
+    {
+        for (unsigned int j = 0; j < set_size3; j++)
+        {
+            pod_matrix2_set3[i][j] = static_cast<double>((int(k) % 2) + 1);
+            k++;
+        }
+    }
+    print_full_matrix(pod_matrix2_set3, set_size3);
+
     // Encode the matrices
     vector<Plaintext> plain_matrix1_set1(set_size1), plain_matrix2_set1(set_size1);
+    vector<Plaintext> plain_matrix1_set2(set_size2), plain_matrix2_set2(set_size2);
+    vector<Plaintext> plain_matrix1_set3(set_size3), plain_matrix2_set3(set_size3);
+
     double scale = sqrt(static_cast<double>(params.coeff_modulus().back().value()));
 
     // First set encode
@@ -633,8 +758,31 @@ void ckksBenchmarkMatrix(size_t poly_modulus_degree)
         ckks_encoder.encode(pod_matrix2_set1[i], scale, plain_matrix2_set1[i]);
     }
 
+    // Second set encode
+    for (unsigned int i = 0; i < pod_matrix1_set2.size(); i++)
+    {
+        ckks_encoder.encode(pod_matrix1_set2[i], scale, plain_matrix1_set2[i]);
+    }
+    for (unsigned int i = 0; i < pod_matrix2_set2.size(); i++)
+    {
+        ckks_encoder.encode(pod_matrix2_set2[i], scale, plain_matrix2_set2[i]);
+    }
+
+    // Third set encode
+    for (unsigned int i = 0; i < pod_matrix1_set3.size(); i++)
+    {
+        ckks_encoder.encode(pod_matrix1_set3[i], scale, plain_matrix1_set3[i]);
+    }
+    for (unsigned int i = 0; i < pod_matrix2_set3.size(); i++)
+    {
+        ckks_encoder.encode(pod_matrix2_set3[i], scale, plain_matrix2_set3[i]);
+    }
+
     // Encrypt the matrices
     vector<Ciphertext> cipher_matrix1_set1(set_size1), cipher_matrix2_set1(set_size1);
+    vector<Ciphertext> cipher_matrix1_set2(set_size2), cipher_matrix2_set2(set_size2);
+    vector<Ciphertext> cipher_matrix1_set3(set_size3), cipher_matrix2_set3(set_size3);
+
     // First set cipher
     for (unsigned int i = 0; i < plain_matrix1_set1.size(); i++)
     {
@@ -645,12 +793,40 @@ void ckksBenchmarkMatrix(size_t poly_modulus_degree)
         encryptor.encrypt(plain_matrix2_set1[i], cipher_matrix2_set1[i]);
     }
 
+    // Second set cipher
+    for (unsigned int i = 0; i < plain_matrix1_set2.size(); i++)
+    {
+        encryptor.encrypt(plain_matrix1_set2[i], cipher_matrix1_set2[i]);
+    }
+    for (unsigned int i = 0; i < plain_matrix2_set2.size(); i++)
+    {
+        encryptor.encrypt(plain_matrix2_set2[i], cipher_matrix2_set2[i]);
+    }
+
+    // Third set cipher
+    for (unsigned int i = 0; i < plain_matrix1_set3.size(); i++)
+    {
+        encryptor.encrypt(plain_matrix1_set3[i], cipher_matrix1_set3[i]);
+    }
+    for (unsigned int i = 0; i < plain_matrix2_set3.size(); i++)
+    {
+        encryptor.encrypt(plain_matrix2_set3[i], cipher_matrix2_set3[i]);
+    }
+
     // Create ciphertext output
-    vector<Ciphertext> cipher_result1_set1(set_size1);
+    // Set 1 output
+    vector<Ciphertext> cipher_result1_set1(set_size1), cipher_result2_set1(set_size1), cipher_result3_set1(set_size1), cipher_result4_set1(set_size1);
+    // Set 2 output
+    vector<Ciphertext> cipher_result1_set2(set_size2), cipher_result2_set2(set_size2), cipher_result3_set2(set_size2), cipher_result4_set2(set_size2);
+    // Set 3 output
+    vector<Ciphertext> cipher_result1_set3(set_size3), cipher_result2_set3(set_size3), cipher_result3_set3(set_size3), cipher_result4_set3(set_size3);
 
     // ------------------ (cipher1 + plain2) ---------------
     cout << "\n------------------ FIRST OPERATION ------------------\n"
          << endl;
+    outf << "# index 0" << endl;
+    outf << "# C1 + P2" << endl;
+
     // Compute (cipher1 + plain2) for set 1
     cout << "Compute (cipher1 + plain2) for set 1" << endl;
 
@@ -679,7 +855,81 @@ void ckksBenchmarkMatrix(size_t poly_modulus_degree)
         ckks_encoder.decode(plain_result1_set1[i], matrix_result1_set1[i]);
     }
 
-    print_full_matrix(matrix_result1_set1, 10);
+    print_full_matrix(matrix_result1_set1, set_size1);
+
+    cout << "\nTime to compute cipher1 + plain2: " << duration_comp1_set1.count() << " microseconds" << endl;
+    outf << set_size1 << "\t\t" << duration_comp1_set1.count() << endl;
+
+    // Compute (cipher1 + plain2) for set 2
+    cout << "Compute (cipher1 + plain2) for set 2" << endl;
+
+    // TIME START
+    auto start_comp1_set2 = chrono::high_resolution_clock::now();
+
+    for (unsigned int i = 0; i < cipher_matrix1_set2.size(); i++)
+    {
+        evaluator.add_plain(cipher_matrix1_set2[i], plain_matrix2_set2[i], cipher_result1_set2[i]);
+    }
+
+    // TIME END
+    auto stop_comp1_set2 = chrono::high_resolution_clock::now();
+    auto duration_comp1_set2 = chrono::duration_cast<chrono::microseconds>(stop_comp1_set2 - start_comp1_set2);
+
+    // Decrypt and Decode
+    vector<Plaintext> plain_result1_set2(set_size2);
+    cout << "Decrypt and decode the result" << endl;
+    for (unsigned int i = 0; i < cipher_result1_set2.size(); i++)
+    {
+        decryptor.decrypt(cipher_result1_set2[i], plain_result1_set2[i]);
+    }
+    vector<vector<double>> matrix_result1_set2(set_size2, vector<double>(set_size2));
+    for (unsigned int i = 0; i < plain_result1_set2.size(); i++)
+    {
+        ckks_encoder.decode(plain_result1_set2[i], matrix_result1_set2[i]);
+    }
+
+    print_full_matrix(matrix_result1_set2, set_size2);
+
+    cout << "\nTime to compute cipher1 + plain2: " << duration_comp1_set2.count() << " microseconds" << endl;
+    outf << set_size2 << "\t\t" << duration_comp1_set2.count() << endl;
+
+    // Compute (cipher1 + plain2) for set 2
+    cout << "Compute (cipher1 + plain2) for set 3" << endl;
+
+    // TIME START
+    auto start_comp1_set3 = chrono::high_resolution_clock::now();
+
+    for (unsigned int i = 0; i < cipher_matrix1_set3.size(); i++)
+    {
+        evaluator.add_plain(cipher_matrix1_set3[i], plain_matrix2_set3[i], cipher_result1_set3[i]);
+    }
+
+    // TIME END
+    auto stop_comp1_set3 = chrono::high_resolution_clock::now();
+    auto duration_comp1_set3 = chrono::duration_cast<chrono::microseconds>(stop_comp1_set3 - start_comp1_set3);
+
+    // Decrypt and Decode
+    vector<Plaintext> plain_result1_set3(set_size3);
+    cout << "Decrypt and decode the result" << endl;
+    for (unsigned int i = 0; i < cipher_result1_set3.size(); i++)
+    {
+        decryptor.decrypt(cipher_result1_set3[i], plain_result1_set3[i]);
+    }
+    vector<vector<double>> matrix_result1_set3(set_size3, vector<double>(set_size3));
+    for (unsigned int i = 0; i < plain_result1_set3.size(); i++)
+    {
+        ckks_encoder.decode(plain_result1_set3[i], matrix_result1_set3[i]);
+    }
+
+    print_full_matrix(matrix_result1_set3, set_size3);
+
+    cout << "\nTime to compute cipher1 + plain2: " << duration_comp1_set3.count() << " microseconds" << endl;
+    outf << set_size3 << "\t\t" << duration_comp1_set3.count() << endl;
+
+
+
+
+    outf.close();
 }
 
 int main()
