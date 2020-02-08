@@ -961,7 +961,7 @@ void ckksBenchmarkMatrix(size_t poly_modulus_degree)
     cout << "\nTime to compute cipher1 + plain2: " << duration_comp1_set2.count() << " microseconds" << endl;
     outf << set_size2 << "\t\t" << duration_comp1_set2.count() << endl;
 
-    // Compute (cipher1 + plain2) for set 2
+    // Compute (cipher1 + plain2) for set 3
     cout << "Compute (cipher1 + plain2) for set 3" << endl;
 
     // TIME START
@@ -993,6 +993,114 @@ void ckksBenchmarkMatrix(size_t poly_modulus_degree)
 
     cout << "\nTime to compute cipher1 + plain2: " << duration_comp1_set3.count() << " microseconds" << endl;
     outf << set_size3 << "\t\t" << duration_comp1_set3.count() << endl;
+
+    cout << endl;
+    outf << "\n"
+         << endl;
+    // ------------------ (cipher1 + cipher2) ---------------
+    cout << "\n------------------ SECOND OPERATION ------------------\n"
+         << endl;
+    outf << "# index 1" << endl;
+    outf << "# C1 + C2" << endl;
+
+    // Compute (cipher1 + cipher2) for set 1
+    cout << "Compute (cipher1 + cipher2) for set 1" << endl;
+
+    // TIME START
+    auto start_comp2_set1 = chrono::high_resolution_clock::now();
+
+    for (unsigned int i = 0; i < cipher_matrix1_set1.size(); i++)
+    {
+        evaluator.add(cipher_matrix1_set1[i], cipher_matrix2_set1[i], cipher_result2_set1[i]);
+    }
+
+    // TIME END
+    auto stop_comp2_set1 = chrono::high_resolution_clock::now();
+    auto duration_comp2_set1 = chrono::duration_cast<chrono::microseconds>(stop_comp2_set1 - start_comp2_set1);
+
+    // Decrypt and Decode
+    vector<Plaintext> plain_result2_set1(set_size1);
+    cout << "Decrypt and decode the result" << endl;
+    for (unsigned int i = 0; i < cipher_result2_set1.size(); i++)
+    {
+        decryptor.decrypt(cipher_result2_set1[i], plain_result2_set1[i]);
+    }
+    vector<vector<double>> matrix_result2_set1(set_size1, vector<double>(set_size1));
+    for (unsigned int i = 0; i < plain_result2_set1.size(); i++)
+    {
+        ckks_encoder.decode(plain_result2_set1[i], matrix_result2_set1[i]);
+    }
+
+    print_partial_matrix(matrix_result2_set1, set_size1);
+
+    cout << "\nTime to compute cipher1 + cipher2: " << duration_comp2_set1.count() << " microseconds" << endl;
+    outf << set_size1 << "\t\t" << duration_comp2_set1.count() << endl;
+
+    // Compute (cipher1 + cipher2) for set 2
+    cout << "Compute (cipher1 + cipher2) for set 2" << endl;
+
+    // TIME START
+    auto start_comp2_set2 = chrono::high_resolution_clock::now();
+
+    for (unsigned int i = 0; i < cipher_matrix1_set2.size(); i++)
+    {
+        evaluator.add(cipher_matrix1_set2[i], cipher_matrix2_set2[i], cipher_result2_set2[i]);
+    }
+
+    // TIME END
+    auto stop_comp2_set2 = chrono::high_resolution_clock::now();
+    auto duration_comp2_set2 = chrono::duration_cast<chrono::microseconds>(stop_comp2_set2 - start_comp2_set2);
+
+    // Decrypt and Decode
+    vector<Plaintext> plain_result2_set2(set_size2);
+    cout << "Decrypt and decode the result" << endl;
+    for (unsigned int i = 0; i < cipher_result2_set2.size(); i++)
+    {
+        decryptor.decrypt(cipher_result2_set2[i], plain_result2_set2[i]);
+    }
+    vector<vector<double>> matrix_result2_set2(set_size2, vector<double>(set_size2));
+    for (unsigned int i = 0; i < plain_result2_set2.size(); i++)
+    {
+        ckks_encoder.decode(plain_result2_set2[i], matrix_result2_set2[i]);
+    }
+
+    print_partial_matrix(matrix_result2_set2, set_size2);
+
+    cout << "\nTime to compute cipher1 + cipher2: " << duration_comp2_set2.count() << " microseconds" << endl;
+    outf << set_size2 << "\t\t" << duration_comp2_set2.count() << endl;
+
+    // Compute (cipher1 + cipher2) for set 3
+    cout << "Compute (cipher1 + cipher2) for set 3" << endl;
+
+    // TIME START
+    auto start_comp2_set3 = chrono::high_resolution_clock::now();
+
+    for (unsigned int i = 0; i < cipher_matrix1_set3.size(); i++)
+    {
+        evaluator.add(cipher_matrix1_set3[i], cipher_matrix2_set3[i], cipher_result2_set3[i]);
+    }
+
+    // TIME END
+    auto stop_comp2_set3 = chrono::high_resolution_clock::now();
+    auto duration_comp2_set3 = chrono::duration_cast<chrono::microseconds>(stop_comp2_set3 - start_comp2_set3);
+
+    // Decrypt and Decode
+    vector<Plaintext> plain_result2_set3(set_size3);
+    cout << "Decrypt and decode the result" << endl;
+    for (unsigned int i = 0; i < cipher_result2_set3.size(); i++)
+    {
+        decryptor.decrypt(cipher_result2_set3[i], plain_result2_set3[i]);
+    }
+    vector<vector<double>> matrix_result2_set3(set_size3, vector<double>(set_size3));
+    for (unsigned int i = 0; i < plain_result2_set3.size(); i++)
+    {
+        ckks_encoder.decode(plain_result2_set3[i], matrix_result2_set3[i]);
+    }
+
+    print_partial_matrix(matrix_result2_set3, set_size3);
+
+    cout << "\nTime to compute cipher1 + cipher2: " << duration_comp2_set3.count() << " microseconds" << endl;
+    outf << set_size3 << "\t\t" << duration_comp2_set3.count() << endl;
 
     outf.close();
 }
