@@ -621,12 +621,7 @@ void ckksBenchmarkMatrix(size_t poly_modulus_degree)
 
     // Encode the matrices
     vector<Plaintext> plain_matrix1_set1(set_size1), plain_matrix2_set1(set_size1);
-
-    cout << "pre-encoding1" << endl;
-
     double scale = sqrt(static_cast<double>(params.coeff_modulus().back().value()));
-
-    cout << "pre-encoding2" << endl;
 
     // First set encode
     for (unsigned int i = 0; i < pod_matrix1_set1.size(); i++)
@@ -637,8 +632,6 @@ void ckksBenchmarkMatrix(size_t poly_modulus_degree)
     {
         ckks_encoder.encode(pod_matrix2_set1[i], scale, plain_matrix2_set1[i]);
     }
-
-    cout << "post-encoding" << endl;
 
     // Encrypt the matrices
     vector<Ciphertext> cipher_matrix1_set1(set_size1), cipher_matrix2_set1(set_size1);
@@ -655,8 +648,6 @@ void ckksBenchmarkMatrix(size_t poly_modulus_degree)
     // Create ciphertext output
     vector<Ciphertext> cipher_result1_set1(set_size1);
 
-    cout << "a" << endl;
-
     // ------------------ (cipher1 + plain2) ---------------
     cout << "\n------------------ FIRST OPERATION ------------------\n"
          << endl;
@@ -671,13 +662,9 @@ void ckksBenchmarkMatrix(size_t poly_modulus_degree)
         evaluator.add_plain(cipher_matrix1_set1[i], plain_matrix2_set1[i], cipher_result1_set1[i]);
     }
 
-    cout << "b" << endl;
-
     // TIME END
     auto stop_comp1_set1 = chrono::high_resolution_clock::now();
     auto duration_comp1_set1 = chrono::duration_cast<chrono::microseconds>(stop_comp1_set1 - start_comp1_set1);
-
-    cout << "c" << endl;
 
     // Decrypt and Decode
     vector<Plaintext> plain_result1_set1(set_size1);
