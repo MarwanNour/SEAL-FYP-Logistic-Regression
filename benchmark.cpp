@@ -77,6 +77,55 @@ inline void print_full_matrix(vector<vector<T>> matrix, int size, int precision 
     cout.copyfmt(old_fmt);
 }
 
+template <typename T>
+inline void print_partial_matrix(vector<vector<T>> matrix, int size, int precision = 3)
+{
+    // save formatting for cout
+    ios old_fmt(nullptr);
+    old_fmt.copyfmt(cout);
+    cout << fixed << setprecision(precision);
+
+    int print_size = 4;
+
+    // print first 4 elements
+    for (unsigned int row = 0; row < print_size; row++)
+    {
+        cout << "\t[";
+        for (unsigned int col = 0; col < print_size; col++)
+        {
+            cout << matrix[row][col] << ", ";
+        }
+        cout << "..., ";
+        for (unsigned int col = size - print_size; col < size - 1; col++)
+        {
+            cout << matrix[row][col] << ", ";
+        }
+        cout << matrix[row][size - 1];
+        cout << "]" << endl;
+    }
+    cout << "\t..." << endl;
+
+    for (unsigned int row = size - print_size; row < size; row++)
+    {
+        cout << "\t[";
+        for (unsigned int col = 0; col < print_size; col++)
+        {
+            cout << matrix[row][col] << ", ";
+        }
+        cout << "..., ";
+        for (unsigned int col = size - print_size; col < size - 1; col++)
+        {
+            cout << matrix[row][col] << ", ";
+        }
+        cout << matrix[row][size - 1];
+        cout << "]" << endl;
+    }
+
+    cout << endl;
+    // restore old cout formatting
+    cout.copyfmt(old_fmt);
+}
+
 void ckksBenchmark(size_t poly_modulus_degree)
 {
     cout << "------CKKS TEST------\n"
@@ -666,7 +715,11 @@ void ckksBenchmarkMatrix(size_t poly_modulus_degree)
             k++;
         }
     }
-    print_full_matrix(pod_matrix1_set1, set_size1);
+
+    cout << "Matrix 1 Set 1:\n"
+         << endl;
+    // print_full_matrix(pod_matrix1_set1, set_size1);
+    print_partial_matrix(pod_matrix1_set1, set_size1);
 
     // Second Matrix
     vector<vector<double>> pod_matrix2_set1(set_size1, vector<double>(set_size1));
@@ -679,8 +732,11 @@ void ckksBenchmarkMatrix(size_t poly_modulus_degree)
             k++;
         }
     }
-    print_full_matrix(pod_matrix2_set1, set_size1);
+    cout << "Matrix 2 Set 1:\n"
+         << endl;
 
+    // print_full_matrix(pod_matrix2_set1, set_size1);
+    print_partial_matrix(pod_matrix2_set1, set_size1);
     // ------------- Second SET -------------
     // First Matrix
     int set_size2 = 100;
@@ -696,7 +752,10 @@ void ckksBenchmarkMatrix(size_t poly_modulus_degree)
             k++;
         }
     }
-    print_full_matrix(pod_matrix1_set2, set_size2);
+    cout << "Matrix 1 Set 2:\n"
+         << endl;
+
+    print_partial_matrix(pod_matrix1_set2, set_size2);
 
     // Second Matrix
     vector<vector<double>> pod_matrix2_set2(set_size2, vector<double>(set_size2));
@@ -709,7 +768,10 @@ void ckksBenchmarkMatrix(size_t poly_modulus_degree)
             k++;
         }
     }
-    print_full_matrix(pod_matrix2_set2, set_size2);
+    cout << "Matrix 2 Set 2:\n"
+         << endl;
+
+    print_partial_matrix(pod_matrix2_set2, set_size2);
 
     // ------------- THIRD SET -------------
     // First Matrix
@@ -726,7 +788,10 @@ void ckksBenchmarkMatrix(size_t poly_modulus_degree)
             k++;
         }
     }
-    print_full_matrix(pod_matrix1_set3, set_size3);
+    cout << "Matrix 1 Set 3:\n"
+         << endl;
+
+    print_partial_matrix(pod_matrix1_set3, set_size3);
 
     // Second Matrix
     vector<vector<double>> pod_matrix2_set3(set_size3, vector<double>(set_size3));
@@ -739,7 +804,10 @@ void ckksBenchmarkMatrix(size_t poly_modulus_degree)
             k++;
         }
     }
-    print_full_matrix(pod_matrix2_set3, set_size3);
+    cout << "Matrix 2 Set 3:\n"
+         << endl;
+
+    print_partial_matrix(pod_matrix2_set3, set_size3);
 
     // Encode the matrices
     vector<Plaintext> plain_matrix1_set1(set_size1), plain_matrix2_set1(set_size1);
@@ -855,7 +923,7 @@ void ckksBenchmarkMatrix(size_t poly_modulus_degree)
         ckks_encoder.decode(plain_result1_set1[i], matrix_result1_set1[i]);
     }
 
-    print_full_matrix(matrix_result1_set1, set_size1);
+    print_partial_matrix(matrix_result1_set1, set_size1);
 
     cout << "\nTime to compute cipher1 + plain2: " << duration_comp1_set1.count() << " microseconds" << endl;
     outf << set_size1 << "\t\t" << duration_comp1_set1.count() << endl;
@@ -888,7 +956,7 @@ void ckksBenchmarkMatrix(size_t poly_modulus_degree)
         ckks_encoder.decode(plain_result1_set2[i], matrix_result1_set2[i]);
     }
 
-    print_full_matrix(matrix_result1_set2, set_size2);
+    print_partial_matrix(matrix_result1_set2, set_size2);
 
     cout << "\nTime to compute cipher1 + plain2: " << duration_comp1_set2.count() << " microseconds" << endl;
     outf << set_size2 << "\t\t" << duration_comp1_set2.count() << endl;
@@ -921,13 +989,10 @@ void ckksBenchmarkMatrix(size_t poly_modulus_degree)
         ckks_encoder.decode(plain_result1_set3[i], matrix_result1_set3[i]);
     }
 
-    print_full_matrix(matrix_result1_set3, set_size3);
+    print_partial_matrix(matrix_result1_set3, set_size3);
 
     cout << "\nTime to compute cipher1 + plain2: " << duration_comp1_set3.count() << " microseconds" << endl;
     outf << set_size3 << "\t\t" << duration_comp1_set3.count() << endl;
-
-
-
 
     outf.close();
 }
