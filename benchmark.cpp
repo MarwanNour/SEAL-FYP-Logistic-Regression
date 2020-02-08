@@ -693,7 +693,7 @@ void ckksBenchmarkMatrix(size_t poly_modulus_degree)
               << "pointtype 4 pointsize 1.5\n"
               << endl;
 
-    outscript << "\nplot 'bench_" << to_string(poly_modulus_degree) << ".dat' index 0 title \"C1 + P2\" with linespoints ls 1, \\\n"
+    outscript << "\nplot 'bench_matrix_" << to_string(poly_modulus_degree) << ".dat' index 0 title \"C1 + P2\" with linespoints ls 1, \\\n"
               << "'' index 1 title \"C1 + C2\"  with linespoints ls 2, \\\n"
               << "'' index 2 title \"C1 * P2\"  with linespoints ls 3, \\\n"
               << "'' index 3 title \"C1 * C2\"  with linespoints ls 4";
@@ -1118,7 +1118,7 @@ int main()
     params.set_coeff_modulus(CoeffModulus::BFVDefault(poly_modulus_degree));
 
     // Run the tests
-    // ckksBenchmark(poly_modulus_degree);
+    ckksBenchmark(poly_modulus_degree);
     ckksBenchmarkMatrix(poly_modulus_degree);
 
     return 0;
