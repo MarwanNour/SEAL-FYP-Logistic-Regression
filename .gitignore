@@ -8,6 +8,7 @@ Makefile
 5_rotation
 vector_ops
 benchmark
+benchmark2
 *.dat
 *.html
 *.p
