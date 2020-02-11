@@ -61,15 +61,16 @@ inline void print_full_matrix(vector<vector<T>> matrix, int precision = 3)
     ios old_fmt(nullptr);
     old_fmt.copyfmt(cout);
     cout << fixed << setprecision(precision);
-
-    for (unsigned int i = 0; i < matrix.size(); i++)
+    int row_size = matrix.size();
+    int col_size = matrix[0].size();
+    for (unsigned int i = 0; i < row_size; i++)
     {
         cout << "[";
-        for (unsigned int j = 0; j < matrix[i].size() - 1; j++)
+        for (unsigned int j = 0; j < col_size - 1; j++)
         {
             cout << matrix[i][j] << ", ";
         }
-        cout << matrix[i][matrix[i].size() - 1];
+        cout << matrix[i][col_size - 1];
         cout << "]" << endl;
     }
     cout << endl;
@@ -79,15 +80,22 @@ inline void print_full_matrix(vector<vector<T>> matrix, int precision = 3)
 
 // Helper function that prints parts of a matrix (only squared matrix)
 template <typename T>
-inline void print_partial_matrix(vector<vector<T>> matrix, int size, int precision = 3)
+inline void print_partial_matrix(vector<vector<T>> matrix, int print_size = 3, int precision = 3)
 {
     // save formatting for cout
     ios old_fmt(nullptr);
     old_fmt.copyfmt(cout);
     cout << fixed << setprecision(precision);
 
-    int print_size = 4;
+    int row_size = matrix.size();
+    int col_size = matrix[0].size();
 
+    // Boundary check
+    if (row_size < 2 * print_size && col_size < 2 * print_size)
+    {
+        cerr << "Cannot print matrix with these dimensions: " << to_string(row_size) << "x" << to_string(col_size) << ". Increase the print size" << endl;
+        return;
+    }
     // print first 4 elements
     for (unsigned int row = 0; row < print_size; row++)
     {
@@ -97,16 +105,16 @@ inline void print_partial_matrix(vector<vector<T>> matrix, int size, int precisi
             cout << matrix[row][col] << ", ";
         }
         cout << "..., ";
-        for (unsigned int col = matrix[row].size() - print_size; col < matrix[row].size() - 1; col++)
+        for (unsigned int col = col_size - print_size; col < col_size - 1; col++)
         {
             cout << matrix[row][col] << ", ";
         }
-        cout << matrix[row][matrix[row].size() - 1];
+        cout << matrix[row][col_size - 1];
         cout << "]" << endl;
     }
     cout << "\t..." << endl;
 
-    for (unsigned int row = matrix.size() - print_size; row < matrix.size(); row++)
+    for (unsigned int row = row_size - print_size; row < row_size; row++)
     {
         cout << "\t[";
         for (unsigned int col = 0; col < print_size; col++)
@@ -114,11 +122,11 @@ inline void print_partial_matrix(vector<vector<T>> matrix, int size, int precisi
             cout << matrix[row][col] << ", ";
         }
         cout << "..., ";
-        for (unsigned int col = matrix[row].size() - print_size; col < matrix[row].size() - 1; col++)
+        for (unsigned int col = col_size - print_size; col < col_size - 1; col++)
         {
             cout << matrix[row][col] << ", ";
         }
-        cout << matrix[row][matrix[row].size() - 1];
+        cout << matrix[row][col_size - 1];
         cout << "]" << endl;
     }
 
@@ -735,7 +743,7 @@ void ckksBenchmarkMatrix(size_t poly_modulus_degree)
     cout << "Matrix 1 Set 1:\n"
          << endl;
     // print_full_matrix(pod_matrix1_set1);
-    print_partial_matrix(pod_matrix1_set1, set_size1);
+    print_partial_matrix(pod_matrix1_set1);
 
     // Second Matrix
     vector<vector<double>> pod_matrix2_set1(set_size1, vector<double>(set_size1));
@@ -752,7 +760,7 @@ void ckksBenchmarkMatrix(size_t poly_modulus_degree)
          << endl;
 
     // print_full_matrix(pod_matrix2_set1);
-    print_partial_matrix(pod_matrix2_set1, set_size1);
+    print_partial_matrix(pod_matrix2_set1);
     // ------------- Second SET -------------
     // First Matrix
     int set_size2 = 100;
@@ -770,7 +778,7 @@ void ckksBenchmarkMatrix(size_t poly_modulus_degree)
     cout << "Matrix 1 Set 2:\n"
          << endl;
 
-    print_partial_matrix(pod_matrix1_set2, set_size2);
+    print_partial_matrix(pod_matrix1_set2);
 
     // Second Matrix
     vector<vector<double>> pod_matrix2_set2(set_size2, vector<double>(set_size2));
@@ -786,7 +794,7 @@ void ckksBenchmarkMatrix(size_t poly_modulus_degree)
     cout << "Matrix 2 Set 2:\n"
          << endl;
 
-    print_partial_matrix(pod_matrix2_set2, set_size2);
+    print_partial_matrix(pod_matrix2_set2);
 
     // ------------- THIRD SET -------------
     // First Matrix
@@ -805,7 +813,7 @@ void ckksBenchmarkMatrix(size_t poly_modulus_degree)
     cout << "Matrix 1 Set 3:\n"
          << endl;
 
-    print_partial_matrix(pod_matrix1_set3, set_size3);
+    print_partial_matrix(pod_matrix1_set3);
 
     // Second Matrix
     vector<vector<double>> pod_matrix2_set3(set_size3, vector<double>(set_size3));
@@ -821,7 +829,7 @@ void ckksBenchmarkMatrix(size_t poly_modulus_degree)
     cout << "Matrix 2 Set 3:\n"
          << endl;
 
-    print_partial_matrix(pod_matrix2_set3, set_size3);
+    print_partial_matrix(pod_matrix2_set3);
 
     // Transpose the matrices
     // Set 1
@@ -974,8 +982,269 @@ void ckksBenchmarkMatrix(size_t poly_modulus_degree)
     // Set 3 output
     vector<Ciphertext> cipher_result1_set3(set_size3), cipher_result2_set3(set_size3), cipher_result3_set3(set_size3), cipher_result4_set3(set_size3);
 
-    /* WORK IN PROGRESS */
+    // ------------------ (cipher1 + plain2) ---------------
+    cout << "\n------------------ FIRST OPERATION ------------------\n"
+         << endl;
+    outf << "# index 0" << endl;
+    outf << "# C1 + P2" << endl;
 
+    // Compute (cipher1 + plain2) for set 1
+    cout << "Compute (cipher1 + plain2) for set 1" << endl;
+
+    // TIME START
+    auto start_comp1_set1 = chrono::high_resolution_clock::now();
+
+    for (unsigned int i = 0; i < cipher_matrix1_set1.size(); i++)
+    {
+        evaluator.add_plain(cipher_matrix1_set1[i], plain_matrix2_set1[i], cipher_result1_set1[i]);
+    }
+
+    // TIME END
+    auto stop_comp1_set1 = chrono::high_resolution_clock::now();
+    auto duration_comp1_set1 = chrono::duration_cast<chrono::microseconds>(stop_comp1_set1 - start_comp1_set1);
+
+    // Decrypt and Decode
+    vector<Plaintext> plain_result1_set1(set_size1);
+    cout << "Decrypt and decode the result" << endl;
+    for (unsigned int i = 0; i < cipher_result1_set1.size(); i++)
+    {
+        decryptor.decrypt(cipher_result1_set1[i], plain_result1_set1[i]);
+    }
+    vector<vector<double>> matrix_result1_set1(set_size1, vector<double>(set_size1));
+    for (unsigned int i = 0; i < plain_result1_set1.size(); i++)
+    {
+        ckks_encoder.decode(plain_result1_set1[i], matrix_result1_set1[i]);
+    }
+
+    print_partial_matrix(matrix_result1_set1);
+
+    cout << "\nTime to compute cipher1 + plain2: " << duration_comp1_set1.count() << " microseconds" << endl;
+    outf << set_size1 << "\t\t" << duration_comp1_set1.count() << endl;
+
+    // Compute (cipher1 + plain2) for set 2
+    cout << "Compute (cipher1 + plain2) for set 2" << endl;
+
+    // TIME START
+    auto start_comp1_set2 = chrono::high_resolution_clock::now();
+
+    for (unsigned int i = 0; i < cipher_matrix1_set2.size(); i++)
+    {
+        evaluator.add_plain(cipher_matrix1_set2[i], plain_matrix2_set2[i], cipher_result1_set2[i]);
+    }
+
+    // TIME END
+    auto stop_comp1_set2 = chrono::high_resolution_clock::now();
+    auto duration_comp1_set2 = chrono::duration_cast<chrono::microseconds>(stop_comp1_set2 - start_comp1_set2);
+
+    // Decrypt and Decode
+    vector<Plaintext> plain_result1_set2(set_size2);
+    cout << "Decrypt and decode the result" << endl;
+    for (unsigned int i = 0; i < cipher_result1_set2.size(); i++)
+    {
+        decryptor.decrypt(cipher_result1_set2[i], plain_result1_set2[i]);
+    }
+    vector<vector<double>> matrix_result1_set2(set_size2, vector<double>(set_size2));
+    for (unsigned int i = 0; i < plain_result1_set2.size(); i++)
+    {
+        ckks_encoder.decode(plain_result1_set2[i], matrix_result1_set2[i]);
+    }
+
+    print_partial_matrix(matrix_result1_set2);
+
+    cout << "\nTime to compute cipher1 + plain2: " << duration_comp1_set2.count() << " microseconds" << endl;
+    outf << set_size2 << "\t\t" << duration_comp1_set2.count() << endl;
+
+    // Compute (cipher1 + plain2) for set 3
+    cout << "Compute (cipher1 + plain2) for set 3" << endl;
+
+    // TIME START
+    auto start_comp1_set3 = chrono::high_resolution_clock::now();
+
+    for (unsigned int i = 0; i < cipher_matrix1_set3.size(); i++)
+    {
+        evaluator.add_plain(cipher_matrix1_set3[i], plain_matrix2_set3[i], cipher_result1_set3[i]);
+    }
+
+    // TIME END
+    auto stop_comp1_set3 = chrono::high_resolution_clock::now();
+    auto duration_comp1_set3 = chrono::duration_cast<chrono::microseconds>(stop_comp1_set3 - start_comp1_set3);
+
+    // Decrypt and Decode
+    vector<Plaintext> plain_result1_set3(set_size3);
+    cout << "Decrypt and decode the result" << endl;
+    for (unsigned int i = 0; i < cipher_result1_set3.size(); i++)
+    {
+        decryptor.decrypt(cipher_result1_set3[i], plain_result1_set3[i]);
+    }
+    vector<vector<double>> matrix_result1_set3(set_size3, vector<double>(set_size3));
+    for (unsigned int i = 0; i < plain_result1_set3.size(); i++)
+    {
+        ckks_encoder.decode(plain_result1_set3[i], matrix_result1_set3[i]);
+    }
+
+    print_partial_matrix(matrix_result1_set3);
+
+    cout << "\nTime to compute cipher1 + plain2: " << duration_comp1_set3.count() << " microseconds" << endl;
+    outf << set_size3 << "\t\t" << duration_comp1_set3.count() << endl;
+
+    cout << endl;
+    outf << "\n"
+         << endl;
+    // ------------------ (cipher1 + cipher2) ---------------
+    cout << "\n------------------ SECOND OPERATION ------------------\n"
+         << endl;
+    outf << "# index 1" << endl;
+    outf << "# C1 + C2" << endl;
+
+    // Compute (cipher1 + cipher2) for set 1
+    cout << "Compute (cipher1 + cipher2) for set 1" << endl;
+
+    // TIME START
+    auto start_comp2_set1 = chrono::high_resolution_clock::now();
+
+    for (unsigned int i = 0; i < cipher_matrix1_set1.size(); i++)
+    {
+        evaluator.add(cipher_matrix1_set1[i], cipher_matrix2_set1[i], cipher_result2_set1[i]);
+    }
+
+    // TIME END
+    auto stop_comp2_set1 = chrono::high_resolution_clock::now();
+    auto duration_comp2_set1 = chrono::duration_cast<chrono::microseconds>(stop_comp2_set1 - start_comp2_set1);
+
+    // Decrypt and Decode
+    vector<Plaintext> plain_result2_set1(set_size1);
+    cout << "Decrypt and decode the result" << endl;
+    for (unsigned int i = 0; i < cipher_result2_set1.size(); i++)
+    {
+        decryptor.decrypt(cipher_result2_set1[i], plain_result2_set1[i]);
+    }
+    vector<vector<double>> matrix_result2_set1(set_size1, vector<double>(set_size1));
+    for (unsigned int i = 0; i < plain_result2_set1.size(); i++)
+    {
+        ckks_encoder.decode(plain_result2_set1[i], matrix_result2_set1[i]);
+    }
+
+    print_partial_matrix(matrix_result2_set1);
+
+    cout << "\nTime to compute cipher1 + cipher2: " << duration_comp2_set1.count() << " microseconds" << endl;
+    outf << set_size1 << "\t\t" << duration_comp2_set1.count() << endl;
+
+    // Compute (cipher1 + cipher2) for set 2
+    cout << "Compute (cipher1 + cipher2) for set 2" << endl;
+
+    // TIME START
+    auto start_comp2_set2 = chrono::high_resolution_clock::now();
+
+    for (unsigned int i = 0; i < cipher_matrix1_set2.size(); i++)
+    {
+        evaluator.add(cipher_matrix1_set2[i], cipher_matrix2_set2[i], cipher_result2_set2[i]);
+    }
+
+    // TIME END
+    auto stop_comp2_set2 = chrono::high_resolution_clock::now();
+    auto duration_comp2_set2 = chrono::duration_cast<chrono::microseconds>(stop_comp2_set2 - start_comp2_set2);
+
+    // Decrypt and Decode
+    vector<Plaintext> plain_result2_set2(set_size2);
+    cout << "Decrypt and decode the result" << endl;
+    for (unsigned int i = 0; i < cipher_result2_set2.size(); i++)
+    {
+        decryptor.decrypt(cipher_result2_set2[i], plain_result2_set2[i]);
+    }
+    vector<vector<double>> matrix_result2_set2(set_size2, vector<double>(set_size2));
+    for (unsigned int i = 0; i < plain_result2_set2.size(); i++)
+    {
+        ckks_encoder.decode(plain_result2_set2[i], matrix_result2_set2[i]);
+    }
+
+    print_partial_matrix(matrix_result2_set2);
+
+    cout << "\nTime to compute cipher1 + cipher2: " << duration_comp2_set2.count() << " microseconds" << endl;
+    outf << set_size2 << "\t\t" << duration_comp2_set2.count() << endl;
+
+    // Compute (cipher1 + cipher2) for set 3
+    cout << "Compute (cipher1 + cipher2) for set 3" << endl;
+
+    // TIME START
+    auto start_comp2_set3 = chrono::high_resolution_clock::now();
+
+    for (unsigned int i = 0; i < cipher_matrix1_set3.size(); i++)
+    {
+        evaluator.add(cipher_matrix1_set3[i], cipher_matrix2_set3[i], cipher_result2_set3[i]);
+    }
+
+    // TIME END
+    auto stop_comp2_set3 = chrono::high_resolution_clock::now();
+    auto duration_comp2_set3 = chrono::duration_cast<chrono::microseconds>(stop_comp2_set3 - start_comp2_set3);
+
+    // Decrypt and Decode
+    vector<Plaintext> plain_result2_set3(set_size3);
+    cout << "Decrypt and decode the result" << endl;
+    for (unsigned int i = 0; i < cipher_result2_set3.size(); i++)
+    {
+        decryptor.decrypt(cipher_result2_set3[i], plain_result2_set3[i]);
+    }
+    vector<vector<double>> matrix_result2_set3(set_size3, vector<double>(set_size3));
+    for (unsigned int i = 0; i < plain_result2_set3.size(); i++)
+    {
+        ckks_encoder.decode(plain_result2_set3[i], matrix_result2_set3[i]);
+    }
+
+    print_partial_matrix(matrix_result2_set3);
+
+    cout << "\nTime to compute cipher1 + cipher2: " << duration_comp2_set3.count() << " microseconds" << endl;
+    outf << set_size3 << "\t\t" << duration_comp2_set3.count() << endl;
+
+    cout << endl;
+    outf << "\n"
+         << endl;
+
+    /*
+    // ------------------ (cipher1 * plain2) ---------------
+    cout << "\n------------------ THIRD OPERATION ------------------\n"
+         << endl;
+    outf << "# index 2" << endl;
+    outf << "# C1 * P2" << endl;
+
+    // Compute (cipher1 + plain2) for set 1
+    cout << "Compute (cipher1 * plain2) for set 1" << endl;
+
+    // TIME START
+    auto start_comp3_set1 = chrono::high_resolution_clock::now();
+
+    // Mutliply
+    // Create temp ciphertext vector
+    for (unsigned int i = 0; i < cipher_matrix1_set1.size(); i++)
+    {
+        evaluator.multiply_plain(cipher_matrix1_set1[i], plain_T_matrix1_set1[i], cipher_result3_set1[i]);
+    }
+
+    // TIME END
+    auto stop_comp3_set1 = chrono::high_resolution_clock::now();
+    auto duration_comp3_set1 = chrono::duration_cast<chrono::microseconds>(stop_comp3_set1 - start_comp3_set1);
+
+    // Decrypt and Decode
+    vector<Plaintext> plain_result3_set1(set_size1);
+    cout << "Decrypt and decode the result" << endl;
+    for (unsigned int i = 0; i < cipher_result3_set1.size(); i++)
+    {
+        decryptor.decrypt(cipher_result3_set1[i], plain_result3_set1[i]);
+    }
+    vector<vector<double>> matrix_result3_set1(set_size1, vector<double>(set_size1));
+    for (unsigned int i = 0; i < plain_result3_set1.size(); i++)
+    {
+        ckks_encoder.decode(plain_result3_set1[i], matrix_result3_set1[i]);
+    }
+
+    print_partial_matrix(matrix_result3_set1);
+
+    cout << "\nTime to compute cipher1 * plain2: " << duration_comp3_set1.count() << " microseconds" << endl;
+    outf << set_size1 << "\t\t" << duration_comp3_set1.count() << endl;
+
+    cout << endl;
+    outf << "\n"
+         << endl;
+*/
     outf.close();
 }
 
@@ -994,7 +1263,9 @@ int main()
     // Run the tests
     //ckksBenchmark(poly_modulus_degree);
     ckksBenchmarkMatrix(poly_modulus_degree);
-    vector<vector<double>> test_matrix(5, vector<double>(3));
+
+    cout << "\nTest transpose:\n" << endl;
+    vector<vector<double>> test_matrix(10, vector<double>(8));
     double k = 0.0;
     for (unsigned int i = 0; i < test_matrix.size(); i++)
     {
@@ -1002,14 +1273,17 @@ int main()
         {
             test_matrix[i][j] = k;
             k++;
-            cout << k;
         }
     }
-    cout << endl;
     print_full_matrix(test_matrix, 2);
+
+    cout << endl;
+    print_partial_matrix(test_matrix);
 
     vector<vector<double>> test_transpose = transpose_matrix(test_matrix);
 
     print_full_matrix(test_transpose, 2);
+    print_partial_matrix(test_transpose);
+
     return 0;
 }
