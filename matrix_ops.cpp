@@ -118,14 +118,14 @@ void slowEncoding(int dimension)
     vector<vector<double>> pod_matrix2(dimension, vector<double>(dimension));
 
     // Fill input matrices
-    double k = 0.0;
+    double filler = 0.0;
     for (int i = 0; i < dimension; i++)
     {
         for (int j = 0; j < dimension; j++)
         {
-            pod_matrix1[i][j] = k;
+            pod_matrix1[i][j] = filler;
             pod_matrix2[i][j] = static_cast<double>((j % 2) + 1);
-            k++;
+            filler++;
         }
     }
     print_partial_matrix(pod_matrix1);
@@ -217,7 +217,6 @@ void slowEncoding(int dimension)
 
     cout << "Compute C1+P2 time : " << duration_add_plain.count() << " microseconds" << endl;
 
-
     // C1+C2
     cout << "\n----------------- C1 + C2----------------\n"
          << endl;
@@ -237,7 +236,7 @@ void slowEncoding(int dimension)
     auto stop_add_cipher = chrono::high_resolution_clock::now();
     auto duration_add_cipher = chrono::duration_cast<chrono::microseconds>(stop_add_cipher - start_add_cipher);
 
-    // Decrypt 
+    // Decrypt
     vector<vector<Plaintext>> plain_result_addition_cipher(dimension, vector<Plaintext>(dimension));
 
     for (int i = 0; i < dimension; i++)
@@ -264,8 +263,7 @@ void slowEncoding(int dimension)
 
     cout << "Compute C1+C2 time : " << duration_add_cipher.count() << " microseconds" << endl;
 
-/*
-    // C1+P2
+    // C1*P2
     cout << "\n----------------- C1 * P2 (component-wise)----------------\n"
          << endl;
 
@@ -284,8 +282,131 @@ void slowEncoding(int dimension)
     auto stop_mult_plain = chrono::high_resolution_clock::now();
     auto duration_mult_plain = chrono::duration_cast<chrono::microseconds>(stop_mult_plain - start_mult_plain);
 
+    // Decrypt
+    vector<vector<Plaintext>> plain_result_mult_plain(dimension, vector<Plaintext>(dimension));
+
+    for (int i = 0; i < dimension; i++)
+    {
+        for (int j = 0; j < dimension; j++)
+        {
+            decryptor.decrypt(cipher_result_mult_plain[i][j], plain_result_mult_plain[i][j]);
+        }
+    }
+
+    // Decode
+    vector<vector<double>> pod_result_mult_plain(dimension, vector<double>(dimension));
+    for (int i = 0; i < dimension; i++)
+    {
+        for (int j = 0; j < dimension; j++)
+        {
+            vector<double> temp;
+            ckks_encoder.decode(plain_result_mult_plain[i][j], temp);
+            pod_result_mult_plain[i][j] = temp[0];
+        }
+    }
+    // Print output
+    print_partial_matrix(pod_result_mult_plain);
+
     cout << "Compute C1 * P2 (component-wise) time : " << duration_mult_plain.count() << " microseconds" << endl;
-    */
+
+    // C1*C2
+    cout << "\n----------------- C1 * C2 (component-wise)----------------\n"
+         << endl;
+
+    vector<vector<Ciphertext>> cipher_result_mult_cipher(dimension, vector<Ciphertext>(dimension));
+
+    auto start_mult_cipher = chrono::high_resolution_clock::now();
+
+    for (int i = 0; i < dimension; i++)
+    {
+        for (int j = 0; j < dimension; j++)
+        {
+            evaluator.multiply(cipher_matrix1[i][j], cipher_matrix2[i][j], cipher_result_mult_cipher[i][j]);
+        }
+    }
+
+    auto stop_mult_cipher = chrono::high_resolution_clock::now();
+    auto duration_mult_cipher = chrono::duration_cast<chrono::microseconds>(stop_mult_cipher - start_mult_cipher);
+
+    // Decrypt
+    vector<vector<Plaintext>> plain_result_mult_cipher(dimension, vector<Plaintext>(dimension));
+
+    for (int i = 0; i < dimension; i++)
+    {
+        for (int j = 0; j < dimension; j++)
+        {
+            decryptor.decrypt(cipher_result_mult_cipher[i][j], plain_result_mult_cipher[i][j]);
+        }
+    }
+
+    // Decode
+    vector<vector<double>> pod_result_mult_cipher(dimension, vector<double>(dimension));
+    for (int i = 0; i < dimension; i++)
+    {
+        for (int j = 0; j < dimension; j++)
+        {
+            vector<double> temp;
+            ckks_encoder.decode(plain_result_mult_cipher[i][j], temp);
+            pod_result_mult_cipher[i][j] = temp[0];
+        }
+    }
+    // Print output
+    print_partial_matrix(pod_result_mult_cipher);
+
+    cout << "Compute C1 * C2 (component-wise) time : " << duration_mult_cipher.count() << " microseconds" << endl;
+
+    // C1*P2 (Matrix)
+    cout << "\n----------------- C1 * C2 (matrix multiplication)----------------\n"
+         << endl;
+
+    vector<vector<Ciphertext>> cipher_result_matrix_mult_plain(dimension, vector<Ciphertext>(dimension));
+
+    auto start_matrix_mult_plain = chrono::high_resolution_clock::now();
+
+    for (int i = 0; i < dimension; i++)
+    {
+        for (int j = 0; j < dimension; j++)
+        {
+            vector<Ciphertext> temp(dimension);
+            for (int k = 0; k < dimension; k++)
+            {
+                evaluator.multiply_plain(cipher_matrix1[i][k], plain_matrix2[k][j], temp[k]);
+                cout << "multiply works" << endl;
+            }
+            evaluator.add_many(temp, cipher_result_matrix_mult_plain[i][j]);
+            cout << "add inplace works" << endl;
+        }
+    }
+
+    auto stop_matrix_mult_plain = chrono::high_resolution_clock::now();
+    auto duration_matrix_mult_plain = chrono::duration_cast<chrono::microseconds>(stop_matrix_mult_plain - start_matrix_mult_plain);
+
+    // Decrypt
+    vector<vector<Plaintext>> plain_result_matrix_mult_plain(dimension, vector<Plaintext>(dimension));
+
+    for (int i = 0; i < dimension; i++)
+    {
+        for (int j = 0; j < dimension; j++)
+        {
+            decryptor.decrypt(cipher_result_matrix_mult_plain[i][j], plain_result_matrix_mult_plain[i][j]);
+        }
+    }
+
+    // Decode
+    vector<vector<double>> pod_result_matrix_mult_plain(dimension, vector<double>(dimension));
+    for (int i = 0; i < dimension; i++)
+    {
+        for (int j = 0; j < dimension; j++)
+        {
+            vector<double> temp;
+            ckks_encoder.decode(plain_result_matrix_mult_plain[i][j], temp);
+            pod_result_matrix_mult_plain[i][j] = temp[0];
+        }
+    }
+    // Print output
+    print_partial_matrix(pod_result_matrix_mult_plain);
+
+    cout << "Compute C1 * C2 (matrix multiplication) time : " << duration_matrix_mult_plain.count() << " microseconds" << endl;
 }
 
 int main()
