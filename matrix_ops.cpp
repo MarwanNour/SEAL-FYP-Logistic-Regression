@@ -371,10 +371,8 @@ void slowEncoding(int dimension)
             for (int k = 0; k < dimension; k++)
             {
                 evaluator.multiply_plain(cipher_matrix1[i][k], plain_matrix2[k][j], temp[k]);
-                cout << "multiply works" << endl;
             }
             evaluator.add_many(temp, cipher_result_matrix_mult_plain[i][j]);
-            cout << "add inplace works" << endl;
         }
     }
 
