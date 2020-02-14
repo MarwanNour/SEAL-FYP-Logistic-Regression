@@ -9,6 +9,7 @@ Makefile
 vector_ops
 benchmark
 benchmark2
+matrix_ops
 *.dat
 *.html
 *.p

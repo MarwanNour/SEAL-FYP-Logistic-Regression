@@ -652,7 +652,6 @@ void ckksBenchmarkMatrix(size_t poly_modulus_degree)
     KeyGenerator keygen(context);
     PublicKey pk = keygen.public_key();
     SecretKey sk = keygen.secret_key();
-    RelinKeys relin_keys = keygen.relin_keys();
 
     Encryptor encryptor(context, pk);
     Evaluator evaluator(context);
@@ -736,13 +735,14 @@ void ckksBenchmarkMatrix(size_t poly_modulus_degree)
         {
 
             pod_matrix1_set1[i][j] = k;
+            // cout << "k = " << k;
             k++;
         }
     }
 
     cout << "Matrix 1 Set 1:\n"
          << endl;
-    // print_full_matrix(pod_matrix1_set1);
+    // print_full_matrix(pod_matrix1_set1, set_size1);
     print_partial_matrix(pod_matrix1_set1);
 
     // Second Matrix
@@ -759,7 +759,7 @@ void ckksBenchmarkMatrix(size_t poly_modulus_degree)
     cout << "Matrix 2 Set 1:\n"
          << endl;
 
-    // print_full_matrix(pod_matrix2_set1);
+    // print_full_matrix(pod_matrix2_set1, set_size1);
     print_partial_matrix(pod_matrix2_set1);
     // ------------- Second SET -------------
     // First Matrix
@@ -772,6 +772,7 @@ void ckksBenchmarkMatrix(size_t poly_modulus_degree)
         {
 
             pod_matrix1_set2[i][j] = k;
+            // cout << "k = " << k;
             k++;
         }
     }
@@ -807,6 +808,7 @@ void ckksBenchmarkMatrix(size_t poly_modulus_degree)
         {
 
             pod_matrix1_set3[i][j] = k;
+            // cout << "k = " << k;
             k++;
         }
     }
@@ -831,29 +833,14 @@ void ckksBenchmarkMatrix(size_t poly_modulus_degree)
 
     print_partial_matrix(pod_matrix2_set3);
 
-    // Transpose the matrices
-    // Set 1
-    vector<vector<double>> pod_T_matrix1_set1 = transpose_matrix(pod_matrix1_set1);
-    vector<vector<double>> pod_T_matrix2_set1 = transpose_matrix(pod_matrix2_set1);
-    // Set 2
-    vector<vector<double>> pod_T_matrix1_set2 = transpose_matrix(pod_matrix1_set2);
-    vector<vector<double>> pod_T_matrix2_set2 = transpose_matrix(pod_matrix2_set2);
-    // Set 3
-    vector<vector<double>> pod_T_matrix1_set3 = transpose_matrix(pod_matrix1_set3);
-    vector<vector<double>> pod_T_matrix2_set3 = transpose_matrix(pod_matrix2_set3);
-
     // Encode the matrices
     vector<Plaintext> plain_matrix1_set1(set_size1), plain_matrix2_set1(set_size1);
     vector<Plaintext> plain_matrix1_set2(set_size2), plain_matrix2_set2(set_size2);
     vector<Plaintext> plain_matrix1_set3(set_size3), plain_matrix2_set3(set_size3);
-    // Encode Transposed matrices
-    vector<Plaintext> plain_T_matrix1_set1(set_size1), plain_T_matrix2_set1(set_size1);
-    vector<Plaintext> plain_T_matrix1_set2(set_size2), plain_T_matrix2_set2(set_size2);
-    vector<Plaintext> plain_T_matrix1_set3(set_size3), plain_T_matrix2_set3(set_size3);
 
     double scale = sqrt(static_cast<double>(params.coeff_modulus().back().value()));
 
-    // First Set encode
+    // First set encode
     for (unsigned int i = 0; i < pod_matrix1_set1.size(); i++)
     {
         ckks_encoder.encode(pod_matrix1_set1[i], scale, plain_matrix1_set1[i]);
@@ -862,16 +849,8 @@ void ckksBenchmarkMatrix(size_t poly_modulus_degree)
     {
         ckks_encoder.encode(pod_matrix2_set1[i], scale, plain_matrix2_set1[i]);
     }
-    // First Set Transpose encode
-    for (unsigned int i = 0; i < pod_T_matrix1_set1.size(); i++)
-    {
-        ckks_encoder.encode(pod_T_matrix1_set1[i], scale, plain_T_matrix1_set1[i]);
-    }
-    for (unsigned int i = 0; i < pod_T_matrix2_set1.size(); i++)
-    {
-        ckks_encoder.encode(pod_T_matrix2_set1[i], scale, plain_T_matrix2_set1[i]);
-    }
-    // Second Set encode
+
+    // Second set encode
     for (unsigned int i = 0; i < pod_matrix1_set2.size(); i++)
     {
         ckks_encoder.encode(pod_matrix1_set2[i], scale, plain_matrix1_set2[i]);
@@ -880,16 +859,8 @@ void ckksBenchmarkMatrix(size_t poly_modulus_degree)
     {
         ckks_encoder.encode(pod_matrix2_set2[i], scale, plain_matrix2_set2[i]);
     }
-    // Second Set Transpose encode
-    for (unsigned int i = 0; i < pod_T_matrix1_set2.size(); i++)
-    {
-        ckks_encoder.encode(pod_T_matrix1_set2[i], scale, plain_T_matrix1_set2[i]);
-    }
-    for (unsigned int i = 0; i < pod_T_matrix2_set2.size(); i++)
-    {
-        ckks_encoder.encode(pod_T_matrix2_set2[i], scale, plain_T_matrix2_set2[i]);
-    }
-    // Third Set encode
+
+    // Third set encode
     for (unsigned int i = 0; i < pod_matrix1_set3.size(); i++)
     {
         ckks_encoder.encode(pod_matrix1_set3[i], scale, plain_matrix1_set3[i]);
@@ -898,24 +869,11 @@ void ckksBenchmarkMatrix(size_t poly_modulus_degree)
     {
         ckks_encoder.encode(pod_matrix2_set3[i], scale, plain_matrix2_set3[i]);
     }
-    // Third Set Transpose encode
-    for (unsigned int i = 0; i < pod_T_matrix1_set3.size(); i++)
-    {
-        ckks_encoder.encode(pod_T_matrix1_set3[i], scale, plain_T_matrix1_set3[i]);
-    }
-    for (unsigned int i = 0; i < pod_T_matrix2_set3.size(); i++)
-    {
-        ckks_encoder.encode(pod_T_matrix2_set3[i], scale, plain_T_matrix2_set3[i]);
-    }
 
     // Encrypt the matrices
     vector<Ciphertext> cipher_matrix1_set1(set_size1), cipher_matrix2_set1(set_size1);
     vector<Ciphertext> cipher_matrix1_set2(set_size2), cipher_matrix2_set2(set_size2);
     vector<Ciphertext> cipher_matrix1_set3(set_size3), cipher_matrix2_set3(set_size3);
-    // Encrypt the transposed matrices
-    vector<Ciphertext> cipher_T_matrix1_set1(set_size1), cipher_T_matrix2_set1(set_size1);
-    vector<Ciphertext> cipher_T_matrix1_set2(set_size2), cipher_T_matrix2_set2(set_size2);
-    vector<Ciphertext> cipher_T_matrix1_set3(set_size3), cipher_T_matrix2_set3(set_size3);
 
     // First set cipher
     for (unsigned int i = 0; i < plain_matrix1_set1.size(); i++)
@@ -925,15 +883,6 @@ void ckksBenchmarkMatrix(size_t poly_modulus_degree)
     for (unsigned int i = 0; i < plain_matrix2_set1.size(); i++)
     {
         encryptor.encrypt(plain_matrix2_set1[i], cipher_matrix2_set1[i]);
-    }
-    // First set transpose cipher
-    for (unsigned int i = 0; i < plain_T_matrix1_set1.size(); i++)
-    {
-        encryptor.encrypt(plain_T_matrix1_set1[i], cipher_T_matrix1_set1[i]);
-    }
-    for (unsigned int i = 0; i < plain_T_matrix2_set1.size(); i++)
-    {
-        encryptor.encrypt(plain_T_matrix2_set1[i], cipher_T_matrix2_set1[i]);
     }
 
     // Second set cipher
@@ -945,15 +894,6 @@ void ckksBenchmarkMatrix(size_t poly_modulus_degree)
     {
         encryptor.encrypt(plain_matrix2_set2[i], cipher_matrix2_set2[i]);
     }
-    // Second set transpose cipher
-    for (unsigned int i = 0; i < plain_T_matrix1_set2.size(); i++)
-    {
-        encryptor.encrypt(plain_T_matrix1_set2[i], cipher_T_matrix1_set2[i]);
-    }
-    for (unsigned int i = 0; i < plain_T_matrix2_set2.size(); i++)
-    {
-        encryptor.encrypt(plain_T_matrix2_set2[i], cipher_T_matrix2_set2[i]);
-    }
 
     // Third set cipher
     for (unsigned int i = 0; i < plain_matrix1_set3.size(); i++)
@@ -963,15 +903,6 @@ void ckksBenchmarkMatrix(size_t poly_modulus_degree)
     for (unsigned int i = 0; i < plain_matrix2_set3.size(); i++)
     {
         encryptor.encrypt(plain_matrix2_set3[i], cipher_matrix2_set3[i]);
-    }
-    // Third set tranpose cipher
-    for (unsigned int i = 0; i < plain_T_matrix1_set3.size(); i++)
-    {
-        encryptor.encrypt(plain_T_matrix1_set3[i], cipher_T_matrix1_set3[i]);
-    }
-    for (unsigned int i = 0; i < plain_T_matrix2_set3.size(); i++)
-    {
-        encryptor.encrypt(plain_T_matrix2_set3[i], cipher_T_matrix2_set3[i]);
     }
 
     // Create ciphertext output
@@ -1195,56 +1126,6 @@ void ckksBenchmarkMatrix(size_t poly_modulus_degree)
     cout << "\nTime to compute cipher1 + cipher2: " << duration_comp2_set3.count() << " microseconds" << endl;
     outf << set_size3 << "\t\t" << duration_comp2_set3.count() << endl;
 
-    cout << endl;
-    outf << "\n"
-         << endl;
-
-    /*
-    // ------------------ (cipher1 * plain2) ---------------
-    cout << "\n------------------ THIRD OPERATION ------------------\n"
-         << endl;
-    outf << "# index 2" << endl;
-    outf << "# C1 * P2" << endl;
-
-    // Compute (cipher1 + plain2) for set 1
-    cout << "Compute (cipher1 * plain2) for set 1" << endl;
-
-    // TIME START
-    auto start_comp3_set1 = chrono::high_resolution_clock::now();
-
-    // Mutliply
-    // Create temp ciphertext vector
-    for (unsigned int i = 0; i < cipher_matrix1_set1.size(); i++)
-    {
-        evaluator.multiply_plain(cipher_matrix1_set1[i], plain_T_matrix1_set1[i], cipher_result3_set1[i]);
-    }
-
-    // TIME END
-    auto stop_comp3_set1 = chrono::high_resolution_clock::now();
-    auto duration_comp3_set1 = chrono::duration_cast<chrono::microseconds>(stop_comp3_set1 - start_comp3_set1);
-
-    // Decrypt and Decode
-    vector<Plaintext> plain_result3_set1(set_size1);
-    cout << "Decrypt and decode the result" << endl;
-    for (unsigned int i = 0; i < cipher_result3_set1.size(); i++)
-    {
-        decryptor.decrypt(cipher_result3_set1[i], plain_result3_set1[i]);
-    }
-    vector<vector<double>> matrix_result3_set1(set_size1, vector<double>(set_size1));
-    for (unsigned int i = 0; i < plain_result3_set1.size(); i++)
-    {
-        ckks_encoder.decode(plain_result3_set1[i], matrix_result3_set1[i]);
-    }
-
-    print_partial_matrix(matrix_result3_set1);
-
-    cout << "\nTime to compute cipher1 * plain2: " << duration_comp3_set1.count() << " microseconds" << endl;
-    outf << set_size1 << "\t\t" << duration_comp3_set1.count() << endl;
-
-    cout << endl;
-    outf << "\n"
-         << endl;
-*/
     outf.close();
 }
 
@@ -1264,7 +1145,8 @@ int main()
     //ckksBenchmark(poly_modulus_degree);
     ckksBenchmarkMatrix(poly_modulus_degree);
 
-    cout << "\nTest transpose:\n" << endl;
+    cout << "\nTest transpose:\n"
+         << endl;
     vector<vector<double>> test_matrix(10, vector<double>(8));
     double k = 0.0;
     for (unsigned int i = 0; i < test_matrix.size(); i++)
