@@ -550,7 +550,7 @@ void slowEncoding(size_t poly_modulus_degree)
          << endl;
 
     outf << "# index 3" << endl;
-    outf << "# C1 + C2";
+    outf << "# C1 + C2" << endl;
 
     // Set 1
     vector<vector<Ciphertext>> cipher_result_addition_cipher_set1(dimension1, vector<Ciphertext>(dimension1));
