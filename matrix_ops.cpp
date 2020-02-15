@@ -118,59 +118,65 @@ void slowEncoding(size_t poly_modulus_degree)
     outscript << "set title \"CKKS Matrix Ops Benchmark " << to_string(poly_modulus_degree) << "\"" << endl;
     outscript << "set xlabel 'Input Vector Size'" << endl;
     outscript << "set ylabel 'Time (microseconds)'" << endl;
+    outscript << "set logscale y" << endl;
+    outscript << "set xtics nomirror" << endl;
+    outscript << "set ytics nomirror" << endl;
+    outscript << "set grid" << endl;
+    outscript << "set key outside" << endl;
+    outscript << "set key spacing 2" << endl;
 
     outscript << "\n# Set the styling " << endl;
     outscript << "set style line 1\\\n"
               << "linecolor rgb '#3da3f5'\\\n"
               << "linetype 1 linewidth 2\\\n"
-              << "pointtype 7 pointsize 1.5\n"
+              << "pointtype 7 pointsize 1\n"
               << endl;
 
     outscript << "set style line 2\\\n"
               << "linecolor rgb '#dd181f'\\\n"
               << "linetype 1 linewidth 2\\\n"
-              << "pointtype 5 pointsize 1.5\n"
+              << "pointtype 5 pointsize 1\n"
               << endl;
 
     outscript << "set style line 3\\\n"
               << "linecolor rgb '#00FF00'\\\n"
               << "linetype 1 linewidth 2\\\n"
-              << "pointtype 6 pointsize 1.5\n"
+              << "pointtype 6 pointsize 1\n"
               << endl;
 
     outscript << "set style line 4\\\n"
               << "linecolor rgb '#EC00EC'\\\n"
               << "linetype 1 linewidth 2\\\n"
-              << "pointtype 4 pointsize 1.5\n"
+              << "pointtype 4 pointsize 1\n"
               << endl;
 
     outscript << "set style line 5\\\n"
               << "linecolor rgb '#f5a142'\\\n"
               << "linetype 1 linewidth 2\\\n"
-              << "pointtype 3 pointsize 1.5\n"
+              << "pointtype 3 pointsize 1\n"
               << endl;
 
     outscript << "set style line 6\\\n"
               << "linecolor rgb '#07025e'\\\n"
               << "linetype 1 linewidth 2\\\n"
-              << "pointtype 2 pointsize 1.5\n"
+              << "pointtype 2 pointsize 1\n"
               << endl;
 
     outscript << "set style line 7\\\n"
               << "linecolor rgb '#07025e'\\\n"
               << "linetype 1 linewidth 2\\\n"
-              << "pointtype 9 pointsize 1.5\n"
+              << "pointtype 9 pointsize 1\n"
               << endl;
 
     outscript << "set style line 8\\\n"
               << "linecolor rgb '#07025e'\\\n"
               << "linetype 1 linewidth 2\\\n"
-              << "pointtype 10 pointsize 1.5\n"
+              << "pointtype 10 pointsize 1\n"
               << endl;
 
     outscript << "\nplot 'matrix_ops_" << to_string(poly_modulus_degree) << ".dat'"
-              << " index 0 title \"Encoding\"  with linespoints ls 1, \\\n"
-              << "'' index 1 title \"Encrypting\"  with linespoints ls 2, \\\n"
+              << " index 0 title \"Encode\"  with linespoints ls 1, \\\n"
+              << "'' index 1 title \"Encrypt\"  with linespoints ls 2, \\\n"
               << "'' index 2 title \"C1 + P2\" with linespoints ls 3, \\\n"
               << "'' index 3 title \"C1 + C2\"  with linespoints ls 4, \\\n"
               << "'' index 4 title \"C1 * P2\"  with linespoints ls 5, \\\n"
