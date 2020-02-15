@@ -205,11 +205,11 @@ void slowEncoding(size_t poly_modulus_degree)
     cout << "Dimension Set 1 :" << dimension1 << endl
          << endl;
 
-    int dimension2 = 100;
+    int dimension2 = 20;
     cout << "Dimension Set 2 :" << dimension2 << endl
          << endl;
 
-    int dimension3 = 300;
+    int dimension3 = 50;
     cout << "Dimension Set 3 :" << dimension3 << endl
          << endl;
 
