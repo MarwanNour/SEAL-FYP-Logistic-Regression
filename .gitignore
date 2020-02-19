@@ -10,6 +10,7 @@ vector_ops
 benchmark
 benchmark2
 matrix_ops
+dot_product
 *.dat
 *.html
 *.p
