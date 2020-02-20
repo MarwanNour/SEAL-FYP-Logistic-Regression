@@ -280,18 +280,61 @@ void dotProd(size_t poly_modulus_degree)
     // Test LinearTransform here
     //Ciphertext ct_prime = Linear_Transform(cipher_matrix1_set1[0], plain_matrix1_set1, plain_diagonal1_set1, params, gal_keys);
 
+    // Fill ct
+    Ciphertext ct_rotated;
+    evaluator.rotate_vector(cipher_matrix1_set1[0], (dimension1 * (-1)), gal_keys, ct_rotated);
+    Ciphertext ct;
+    evaluator.add(cipher_matrix1_set1[0], ct_rotated, ct);
+
+
+
     Ciphertext ct_prime;
     // ct` = CMult(ct, u0)
-    evaluator.multiply_plain(cipher_matrix1_set1[0], plain_diagonal2_set1[0], ct_prime);
+    evaluator.multiply_plain(cipher_matrix1_set1[0], plain_diagonal1_set1[0], ct_prime);
 
     for (int l = 1; l < dimension1; l++)
     {
         // ct` = Add(ct`, CMult(Rot(ct, l), ul))
         Ciphertext temp_rot;
         Ciphertext temp_mul;
-        evaluator.rotate_vector(cipher_matrix1_set1[0], l, gal_keys, temp_rot);
-        evaluator.multiply_plain(temp_rot, plain_diagonal2_set1[l], temp_mul);
+        evaluator.rotate_vector(ct, l, gal_keys, temp_rot);
+        evaluator.multiply_plain(temp_rot, plain_diagonal1_set1[l], temp_mul);
         evaluator.add_inplace(ct_prime, temp_mul);
+
+        // test decrypt
+        Plaintext temp_rot_plain;
+        Plaintext temp_mul_plain;
+        Plaintext temp_ct_prime;
+
+        decryptor.decrypt(temp_rot, temp_rot_plain);
+        decryptor.decrypt(temp_mul, temp_mul_plain);
+        decryptor.decrypt(ct_prime, temp_ct_prime);
+
+        // test decode
+        vector<double> test_out_rot, test_out_mul, test_ct_prime;
+        ckks_encoder.decode(temp_ct_prime, test_ct_prime);
+        ckks_encoder.decode(temp_mul_plain, test_out_mul);
+        ckks_encoder.decode(temp_rot_plain, test_out_rot);
+
+        cout << "Rotation " << l << endl;
+        cout << "\nrotated vec:\n\t[";
+        for (int j = 0; j < dimension1; j++)
+        {
+            cout << test_out_rot[j] << ", ";
+        }
+        cout << "\nMult vec vec:\n\t[";
+
+        for (int j = 0; j < dimension1; j++)
+        {
+            cout << test_out_mul[j] << ", ";
+        }
+        cout << "\nCt_prime vec:\n\t[";
+
+        for (int j = 0; j < dimension1; j++)
+        {
+            cout << test_ct_prime[j] << ", ";
+        }
+        cout << endl;
     }
 
     // Decrypt
@@ -309,6 +352,25 @@ void dotProd(size_t poly_modulus_degree)
         cout << output_result[i] << ", ";
     }
     cout << output_result[dimension1 - 1];
+
+    cout << "]" << endl;
+
+    // test decrypt
+    Plaintext test_cipher;
+    decryptor.decrypt(cipher_matrix1_set1[0], test_cipher);
+
+    // Test decode
+    vector<double> test_cipher_out;
+    vector<double> test_plain_out;
+
+    ckks_encoder.decode(test_cipher, test_cipher_out);
+    cout << "First row cipher:" << endl;
+    cout << "\t[";
+    for (int i = 0; i < dimension1 - 1; i++)
+    {
+        cout << test_cipher_out[i] << ", ";
+    }
+    cout << test_cipher_out[dimension1 - 1];
 
     cout << "]" << endl;
 }
