@@ -154,9 +154,9 @@ void dotProd(size_t poly_modulus_degree)
     // Create CKKS encoder
     CKKSEncoder ckks_encoder(context);
     // Create scale
-    double scale = params.coeff_modulus().back().value() / 2;
+    double scale = static_cast<double>(params.coeff_modulus().back().value()) / 2;
 
-    int dimension1 = 4;
+    int dimension1 = 6;
     cout << "Dimension Set 1: " << dimension1 << endl
          << endl;
 
@@ -164,7 +164,7 @@ void dotProd(size_t poly_modulus_degree)
     vector<vector<double>> pod_matrix2_set1(dimension1, vector<double>(dimension1));
 
     // Fill input matrices
-    double filler = 0.0;
+    double filler = 1.0;
     // Set 1
     for (int i = 0; i < dimension1; i++)
     {
@@ -278,19 +278,45 @@ void dotProd(size_t poly_modulus_degree)
     // vector<Ciphertext> cipher_result1_set1(dimension1), cipher_result2_set1(dimension1), cipher_result3_set1(dimension1), cipher_result4_set1(dimension1);
 
     // Test LinearTransform here
-    //Ciphertext ct_prime = Linear_Transform(cipher_matrix1_set1[0], plain_matrix1_set1, plain_diagonal1_set1, params, gal_keys);
-
+    Ciphertext ct_prime = Linear_Transform(cipher_matrix1_set1[0], plain_matrix1_set1, plain_diagonal1_set1, params, gal_keys);
+    /*
     // Fill ct
     Ciphertext ct_rotated;
     evaluator.rotate_vector(cipher_matrix1_set1[0], (dimension1 * (-1)), gal_keys, ct_rotated);
     Ciphertext ct;
     evaluator.add(cipher_matrix1_set1[0], ct_rotated, ct);
 
-
+    // test fill ct
+    Plaintext test_fill;
+    decryptor.decrypt(ct, test_fill);
+    vector<double> out_fill;
+    ckks_encoder.decode(test_fill, out_fill);
+    cout << "Filled CT:\n"
+         << endl;
+    for (int i = 0; i < dimension1; i++)
+    {
+        cout << out_fill[i] << ", ";
+    }
+    cout << "\n"
+         << endl;
 
     Ciphertext ct_prime;
     // ct` = CMult(ct, u0)
     evaluator.multiply_plain(cipher_matrix1_set1[0], plain_diagonal1_set1[0], ct_prime);
+
+    // test mult plain 0
+    Plaintext test_0;
+    decryptor.decrypt(ct_prime, test_0);
+    vector<double> out_test_0;
+    ckks_encoder.decode(test_0, out_test_0);
+    cout << "CT_Prime 0 :\n"
+         << endl;
+    for (int i = 0; i < dimension1; i++)
+    {
+        cout << out_test_0[i] << ", ";
+    }
+    cout << "\n"
+         << endl;
 
     for (int l = 1; l < dimension1; l++)
     {
@@ -312,15 +338,23 @@ void dotProd(size_t poly_modulus_degree)
 
         // test decode
         vector<double> test_out_rot, test_out_mul, test_ct_prime;
+        vector<double> test_diag;
         ckks_encoder.decode(temp_ct_prime, test_ct_prime);
         ckks_encoder.decode(temp_mul_plain, test_out_mul);
         ckks_encoder.decode(temp_rot_plain, test_out_rot);
+        ckks_encoder.decode(plain_diagonal1_set1[l], test_diag);
 
-        cout << "Rotation " << l << endl;
+        cout << "Rotation " << l << "\n"
+             << endl;
         cout << "\nrotated vec:\n\t[";
         for (int j = 0; j < dimension1; j++)
         {
             cout << test_out_rot[j] << ", ";
+        }
+        cout << "\nDiagonal vec:\n\t[";
+        for (int j = 0; j < dimension1; j++)
+        {
+            cout << test_diag[j] << ", ";
         }
         cout << "\nMult vec vec:\n\t[";
 
@@ -334,9 +368,10 @@ void dotProd(size_t poly_modulus_degree)
         {
             cout << test_ct_prime[j] << ", ";
         }
-        cout << endl;
+        cout << "\n"
+             << endl;
     }
-
+*/
     // Decrypt
     Plaintext pt_result;
     decryptor.decrypt(ct_prime, pt_result);
@@ -375,9 +410,55 @@ void dotProd(size_t poly_modulus_degree)
     cout << "]" << endl;
 }
 
+void test_Linear_Transformation()
+{
+    int dimension1 = 6;
+    cout << "Dimension Set 1: " << dimension1 << endl
+         << endl;
+
+    vector<vector<double>> pod_matrix1_set1(dimension1, vector<double>(dimension1));
+    vector<vector<double>> pod_matrix2_set1(dimension1, vector<double>(dimension1));
+
+    // Fill input matrices
+    double filler = 1.0;
+    // Set 1
+    for (int i = 0; i < dimension1; i++)
+    {
+        for (int j = 0; j < dimension1; j++)
+        {
+            pod_matrix1_set1[i][j] = filler;
+            pod_matrix2_set1[i][j] = static_cast<double>((j % 2) + 1);
+            filler++;
+        }
+    }
+    print_full_matrix(pod_matrix1_set1);
+    print_full_matrix(pod_matrix2_set1);
+
+    vector<double> input_vec = pod_matrix1_set1[0];
+    vector<double> result(dimension1);
+    int k = 0;
+    for (int i = 0; i < dimension1; i++)
+    {
+        for (int j = 0; j < dimension1; j++)
+        {
+            result[k] += pod_matrix1_set1[i][j] * input_vec[j];
+        }
+        k++;
+    }
+
+    // Print Result vector
+    cout << "Result Vector: \n\t[";
+    for (int i = 0; i < dimension1 - 1; i++)
+    {
+        cout << result[i] << ", ";
+    }
+    cout << result[dimension1 - 1] << "]" << endl;
+}
+
 int main()
 {
     dotProd(4096);
+    test_Linear_Transformation();
 
     return 0;
 }
