@@ -142,7 +142,7 @@ void dotProd(size_t poly_modulus_degree)
 {
     EncryptionParameters params(scheme_type::CKKS);
     params.set_poly_modulus_degree(poly_modulus_degree);
-    params.set_coeff_modulus(CoeffModulus::BFVDefault(poly_modulus_degree));
+    params.set_coeff_modulus(CoeffModulus::Create(poly_modulus_degree, {60, 40, 40, 60}));
 
     auto context = SEALContext::Create(params);
 
@@ -160,9 +160,9 @@ void dotProd(size_t poly_modulus_degree)
     CKKSEncoder ckks_encoder(context);
     // Create scale
     cout << "Coeff Modulus Back Value: " << params.coeff_modulus().back().value() << endl;
-    double scale = static_cast<double>(sqrt(params.coeff_modulus().back().value()));
+    double scale = pow(2.0, 40);
 
-    int dimension1 = 8;
+    int dimension1 = 12;
     cout << "Dimension Set 1: " << dimension1 << endl
          << endl;
 
@@ -428,7 +428,7 @@ void dotProd(size_t poly_modulus_degree)
 
 void test_Linear_Transformation()
 {
-    int dimension1 = 8;
+    int dimension1 = 12;
     // cout << "Dimension Set 1: " << dimension1 << endl
     //      << endl;
 
@@ -473,7 +473,7 @@ void test_Linear_Transformation()
 
 int main()
 {
-    dotProd(4096);
+    dotProd(8192);
     test_Linear_Transformation();
 
     return 0;
