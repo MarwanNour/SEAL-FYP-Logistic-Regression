@@ -111,26 +111,31 @@ vector<T> get_diagonal(int position, vector<vector<T>> U)
     return diagonal;
 }
 
-Ciphertext Linear_Transform(Ciphertext ct, vector<Plaintext> U_plain, vector<Plaintext> U_diagonals, EncryptionParameters params, GaloisKeys gal_keys)
+Ciphertext Linear_Transform(Ciphertext ct, vector<Plaintext> U_diagonals, GaloisKeys gal_keys, EncryptionParameters params)
 {
     auto context = SEALContext::Create(params);
     Evaluator evaluator(context);
 
-    Ciphertext ct_result;
-    // ct` = CMult(ct, u0)
-    evaluator.multiply_plain(ct, U_diagonals[0], ct_result);
+    // Fill ct with duplicate
+    Ciphertext ct_rot;
+    evaluator.rotate_vector(ct, -U_diagonals.size(), gal_keys, ct_rot);
+    cout << "U_diagonals.size() = " << U_diagonals.size() << endl;
+    Ciphertext ct_new;
+    evaluator.add(ct, ct_rot, ct_new);
 
-    for (int l = 1; l < U_plain.size(); l++)
+    vector<Ciphertext> ct_result(U_diagonals.size());
+    evaluator.multiply_plain(ct_new, U_diagonals[0], ct_result[0]);
+
+    for (int l = 1; l < U_diagonals.size(); l++)
     {
-        // ct` = Add(ct`, CMult(Rot(ct, l), ul))
         Ciphertext temp_rot;
-        Ciphertext temp_mul;
-        evaluator.rotate_vector(ct, l, gal_keys, temp_rot);
-        evaluator.multiply_plain(temp_rot, U_diagonals[l], temp_mul);
-        evaluator.add_inplace(ct_result, temp_mul);
+        evaluator.rotate_vector(ct_new, l, gal_keys, temp_rot);
+        evaluator.multiply_plain(temp_rot, U_diagonals[l], ct_result[l]);
     }
+    Ciphertext ct_prime;
+    evaluator.add_many(ct_result, ct_prime);
 
-    return ct_result;
+    return ct_prime;
 }
 
 void dotProd(size_t poly_modulus_degree)
@@ -154,9 +159,10 @@ void dotProd(size_t poly_modulus_degree)
     // Create CKKS encoder
     CKKSEncoder ckks_encoder(context);
     // Create scale
-    double scale = static_cast<double>(params.coeff_modulus().back().value()) / 2;
+    cout << "Coeff Modulus Back Value: " << params.coeff_modulus().back().value() << endl;
+    double scale = static_cast<double>(sqrt(params.coeff_modulus().back().value()));
 
-    int dimension1 = 6;
+    int dimension1 = 8;
     cout << "Dimension Set 1: " << dimension1 << endl
          << endl;
 
@@ -278,13 +284,23 @@ void dotProd(size_t poly_modulus_degree)
     // vector<Ciphertext> cipher_result1_set1(dimension1), cipher_result2_set1(dimension1), cipher_result3_set1(dimension1), cipher_result4_set1(dimension1);
 
     // Test LinearTransform here
-    Ciphertext ct_prime = Linear_Transform(cipher_matrix1_set1[0], plain_matrix1_set1, plain_diagonal1_set1, params, gal_keys);
-    /*
+    // Ciphertext ct_prime = Linear_Transform(cipher_matrix1_set1[0], plain_diagonal1_set1, gal_keys, params);
+
     // Fill ct
     Ciphertext ct_rotated;
-    evaluator.rotate_vector(cipher_matrix1_set1[0], (dimension1 * (-1)), gal_keys, ct_rotated);
+    evaluator.rotate_vector(cipher_matrix1_set1[0], -dimension1, gal_keys, ct_rotated);
     Ciphertext ct;
     evaluator.add(cipher_matrix1_set1[0], ct_rotated, ct);
+
+    // Add epsilon to avoid negative numbers
+    vector<double> epsilon_vec(poly_modulus_degree / 2);
+    for (int i = 0; i < epsilon_vec.size(); i++)
+    {
+        epsilon_vec[i] = 0.0000;
+    }
+    Plaintext epsilon_plain;
+    ckks_encoder.encode(epsilon_vec, scale, epsilon_plain);
+    evaluator.add_plain_inplace(ct, epsilon_plain);
 
     // test fill ct
     Plaintext test_fill;
@@ -302,7 +318,7 @@ void dotProd(size_t poly_modulus_degree)
 
     Ciphertext ct_prime;
     // ct` = CMult(ct, u0)
-    evaluator.multiply_plain(cipher_matrix1_set1[0], plain_diagonal1_set1[0], ct_prime);
+    evaluator.multiply_plain(ct, plain_diagonal1_set1[0], ct_prime);
 
     // test mult plain 0
     Plaintext test_0;
@@ -371,7 +387,7 @@ void dotProd(size_t poly_modulus_degree)
         cout << "\n"
              << endl;
     }
-*/
+
     // Decrypt
     Plaintext pt_result;
     decryptor.decrypt(ct_prime, pt_result);
@@ -380,7 +396,7 @@ void dotProd(size_t poly_modulus_degree)
     vector<double> output_result;
     ckks_encoder.decode(pt_result, output_result);
 
-    cout << "Linear Transformation Result (cipher_matrix1_set1[0], plain_matrix2_set1, plain_diagonal2_set1):" << endl;
+    cout << "Linear Transformation Result:" << endl;
     cout << "\t[";
     for (int i = 0; i < dimension1 - 1; i++)
     {
@@ -412,9 +428,9 @@ void dotProd(size_t poly_modulus_degree)
 
 void test_Linear_Transformation()
 {
-    int dimension1 = 6;
-    cout << "Dimension Set 1: " << dimension1 << endl
-         << endl;
+    int dimension1 = 8;
+    // cout << "Dimension Set 1: " << dimension1 << endl
+    //      << endl;
 
     vector<vector<double>> pod_matrix1_set1(dimension1, vector<double>(dimension1));
     vector<vector<double>> pod_matrix2_set1(dimension1, vector<double>(dimension1));
@@ -431,8 +447,8 @@ void test_Linear_Transformation()
             filler++;
         }
     }
-    print_full_matrix(pod_matrix1_set1);
-    print_full_matrix(pod_matrix2_set1);
+    // print_full_matrix(pod_matrix1_set1);
+    // print_full_matrix(pod_matrix2_set1);
 
     vector<double> input_vec = pod_matrix1_set1[0];
     vector<double> result(dimension1);
@@ -447,7 +463,7 @@ void test_Linear_Transformation()
     }
 
     // Print Result vector
-    cout << "Result Vector: \n\t[";
+    cout << "Expected Result Vector: \n\t[";
     for (int i = 0; i < dimension1 - 1; i++)
     {
         cout << result[i] << ", ";
