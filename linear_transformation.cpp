@@ -119,7 +119,7 @@ Ciphertext Linear_Transform(Ciphertext ct, vector<Plaintext> U_diagonals, Galois
     // Fill ct with duplicate
     Ciphertext ct_rot;
     evaluator.rotate_vector(ct, -U_diagonals.size(), gal_keys, ct_rot);
-    cout << "U_diagonals.size() = " << U_diagonals.size() << endl;
+    // cout << "U_diagonals.size() = " << U_diagonals.size() << endl;
     Ciphertext ct_new;
     evaluator.add(ct, ct_rot, ct_new);
 
@@ -138,7 +138,7 @@ Ciphertext Linear_Transform(Ciphertext ct, vector<Plaintext> U_diagonals, Galois
     return ct_prime;
 }
 
-void dotProd(size_t poly_modulus_degree)
+void Matrix_Vector_Multiplication(size_t poly_modulus_degree)
 {
     EncryptionParameters params(scheme_type::CKKS);
     params.set_poly_modulus_degree(poly_modulus_degree);
@@ -284,8 +284,8 @@ void dotProd(size_t poly_modulus_degree)
     // vector<Ciphertext> cipher_result1_set1(dimension1), cipher_result2_set1(dimension1), cipher_result3_set1(dimension1), cipher_result4_set1(dimension1);
 
     // Test LinearTransform here
-    // Ciphertext ct_prime = Linear_Transform(cipher_matrix1_set1[0], plain_diagonal1_set1, gal_keys, params);
-
+    Ciphertext ct_prime = Linear_Transform(cipher_matrix1_set1[0], plain_diagonal1_set1, gal_keys, params);
+    /*  UNCOMMENT TO DEBUG LINEAR TRANSFORM FUNCTION
     // Fill ct
     Ciphertext ct_rotated;
     evaluator.rotate_vector(cipher_matrix1_set1[0], -dimension1, gal_keys, ct_rotated);
@@ -387,7 +387,7 @@ void dotProd(size_t poly_modulus_degree)
         cout << "\n"
              << endl;
     }
-
+*/
     // Decrypt
     Plaintext pt_result;
     decryptor.decrypt(ct_prime, pt_result);
@@ -473,7 +473,7 @@ void test_Linear_Transformation()
 
 int main()
 {
-    dotProd(8192);
+    Matrix_Vector_Multiplication(8192);
     test_Linear_Transformation();
 
     return 0;
