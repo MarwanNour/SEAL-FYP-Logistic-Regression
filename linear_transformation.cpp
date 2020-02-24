@@ -88,6 +88,41 @@ inline void print_partial_matrix(vector<vector<T>> matrix, int print_size = 3, i
     cout.copyfmt(old_fmt);
 }
 
+template <typename T>
+inline void print_partial_vector(vector<T> vec, int size, int print_size = 3, int precision = 3)
+{
+    // save formatting for cout
+    ios old_fmt(nullptr);
+    old_fmt.copyfmt(cout);
+    cout << fixed << setprecision(precision);
+
+    int row_size = size;
+
+    // Boundary check
+    if (row_size < 2 * print_size)
+    {
+        cerr << "Cannot print vector with these dimensions: " << to_string(row_size) << ". Increase the print size" << endl;
+        return;
+    }
+
+    cout << "\t[";
+    for (unsigned int row = 0; row < print_size; row++)
+    {
+        cout << vec[row] << ", ";
+    }
+    cout << "..., ";
+
+    for (unsigned int row = row_size - print_size; row < row_size - 1; row++)
+    {
+        cout << vec[row] << ", ";
+    }
+    cout << vec[row_size - 1] << "]\n";
+
+    cout << endl;
+    // restore old cout formatting
+    cout.copyfmt(old_fmt);
+}
+
 // Gets a diagonal from a matrix U
 template <typename T>
 vector<T> get_diagonal(int position, vector<vector<T>> U)
@@ -138,12 +173,29 @@ Ciphertext Linear_Transform(Ciphertext ct, vector<Plaintext> U_diagonals, Galois
     return ct_prime;
 }
 
+void test_Linear_Transformation(int dimension, vector<vector<double>> input_matrix, vector<double> input_vec)
+{
+    vector<double> result(dimension);
+    int k = 0;
+    for (int i = 0; i < dimension; i++)
+    {
+        for (int j = 0; j < dimension; j++)
+        {
+            result[k] += input_matrix[i][j] * input_vec[j];
+        }
+        k++;
+    }
+
+    // Print Result vector
+    print_partial_vector(result, dimension);
+}
+
 void Matrix_Vector_Multiplication(size_t poly_modulus_degree)
 {
     EncryptionParameters params(scheme_type::CKKS);
     params.set_poly_modulus_degree(poly_modulus_degree);
+    cout << "MAX BIT COUNT: " << CoeffModulus::MaxBitCount(poly_modulus_degree) << endl;
     params.set_coeff_modulus(CoeffModulus::Create(poly_modulus_degree, {60, 40, 40, 60}));
-
     auto context = SEALContext::Create(params);
 
     // Generate keys, encryptor, decryptor and evaluator
@@ -162,7 +214,70 @@ void Matrix_Vector_Multiplication(size_t poly_modulus_degree)
     cout << "Coeff Modulus Back Value: " << params.coeff_modulus().back().value() << endl;
     double scale = pow(2.0, 40);
 
-    int dimension1 = 12;
+    // Set output file
+    string filename = "linear_transf_" + to_string(poly_modulus_degree) + ".dat";
+    ofstream outf(filename);
+
+    // Handle file error
+    if (!outf)
+    {
+        cerr << "Couldn't open file: " << filename << endl;
+        exit(1);
+    }
+
+    // Set output script
+    string script = "script_linear_transf_" + to_string(poly_modulus_degree) + ".p";
+    ofstream outscript(script);
+
+    // Handle script error
+    if (!outscript)
+    {
+        cerr << "Couldn't open file: " << script << endl;
+        exit(1);
+    }
+
+    // Write to Script
+    outscript << "# Set the output terminal" << endl;
+    outscript << "set terminal canvas" << endl;
+    outscript << "set output \"canvas_linear_transf_" << to_string(poly_modulus_degree) << ".html\"" << endl;
+    outscript << "set title \"Linear Transformation Benchmark " << to_string(poly_modulus_degree) << "\"" << endl;
+    outscript << "set xlabel 'Dimension'" << endl;
+    outscript << "set ylabel 'Time (microseconds)'" << endl;
+
+    outscript << "\n# Set the styling " << endl;
+    outscript << "set style line 1\\\n"
+              << "linecolor rgb '#0060ad'\\\n"
+              << "linetype 1 linewidth 2\\\n"
+              << "pointtype 7 pointsize 1.5\n"
+              << endl;
+
+    outscript << "set style line 2\\\n"
+              << "linecolor rgb '#dd181f'\\\n"
+              << "linetype 1 linewidth 2\\\n"
+              << "pointtype 5 pointsize 1.5\n"
+              << endl;
+
+    outscript << "set style line 3\\\n"
+              << "linecolor rgb '#00FF00'\\\n"
+              << "linetype 1 linewidth 2\\\n"
+              << "pointtype 6 pointsize 1.5\n"
+              << endl;
+
+    outscript << "set style line 4\\\n"
+              << "linecolor rgb '#EC00EC'\\\n"
+              << "linetype 1 linewidth 2\\\n"
+              << "pointtype 4 pointsize 1.5\n"
+              << endl;
+
+    outscript << "\nplot 'linear_transf_" << to_string(poly_modulus_degree) << ".dat' index 0 title \"Encode\" with linespoints ls 1, \\\n"
+              << "'' index 1 title \"Encrypt\"  with linespoints ls 2, \\\n"
+              << "'' index 2 title \"C1 * P2\"  with linespoints ls 3, \\\n"
+              << "'' index 3 title \"C1 * C2\"  with linespoints ls 4";
+    // Close script
+    outscript.close();
+
+    // -------------- FIRST SET ----------------
+    int dimension1 = 10;
     cout << "Dimension Set 1: " << dimension1 << endl
          << endl;
 
@@ -172,54 +287,118 @@ void Matrix_Vector_Multiplication(size_t poly_modulus_degree)
     // Fill input matrices
     double filler = 1.0;
     // Set 1
+    double r = ((double)rand() / (RAND_MAX));
+
     for (int i = 0; i < dimension1; i++)
     {
         for (int j = 0; j < dimension1; j++)
         {
-            pod_matrix1_set1[i][j] = filler;
+            pod_matrix1_set1[i][j] = r;
+            r = ((double)rand() / (RAND_MAX));
             pod_matrix2_set1[i][j] = static_cast<double>((j % 2) + 1);
             filler++;
         }
     }
-    print_full_matrix(pod_matrix1_set1);
-    print_full_matrix(pod_matrix2_set1);
+    print_partial_matrix(pod_matrix1_set1);
+    print_partial_matrix(pod_matrix2_set1);
 
-    vector<double> diagonal_matrix1_0 = get_diagonal(0, pod_matrix1_set1);
-
-    cout << "\n\t[";
-    for (int i = 0; i < diagonal_matrix1_0.size() - 1; i++)
-    {
-        cout << diagonal_matrix1_0[i] << ", ";
-    }
-    cout << diagonal_matrix1_0[diagonal_matrix1_0.size() - 1];
-    cout << "]\n"
+    // --------------- SECOND SET ------------------
+    int dimension2 = 100;
+    cout << "Dimension Set 2: " << dimension2 << endl
          << endl;
+
+    vector<vector<double>> pod_matrix1_set2(dimension2, vector<double>(dimension2));
+    vector<vector<double>> pod_matrix2_set2(dimension2, vector<double>(dimension2));
+
+    // Fill input matrices
+    filler = 1.0;
+    // Set 1
+    for (int i = 0; i < dimension2; i++)
+    {
+        for (int j = 0; j < dimension2; j++)
+        {
+            pod_matrix1_set2[i][j] = filler;
+            pod_matrix2_set2[i][j] = static_cast<double>((j % 2) + 1);
+            filler++;
+        }
+    }
+    print_partial_matrix(pod_matrix1_set2);
+    print_partial_matrix(pod_matrix2_set2);
+
+    // --------------- THIRD SET ------------------
+    int dimension3 = 1000;
+    cout << "Dimension Set 3: " << dimension3 << endl
+         << endl;
+
+    vector<vector<double>> pod_matrix1_set3(dimension3, vector<double>(dimension3));
+    vector<vector<double>> pod_matrix2_set3(dimension3, vector<double>(dimension3));
+
+    // Fill input matrices
+    filler = 1.0;
+    // Set 1
+    for (int i = 0; i < dimension3; i++)
+    {
+        for (int j = 0; j < dimension3; j++)
+        {
+            pod_matrix1_set3[i][j] = filler;
+            pod_matrix2_set3[i][j] = static_cast<double>((j % 2) + 1);
+            filler++;
+        }
+    }
+    print_partial_matrix(pod_matrix1_set3);
+    print_partial_matrix(pod_matrix2_set3);
 
     // Get all diagonals
-    vector<vector<double>> all_diagonal_1(dimension1, vector<double>(dimension1));
-    vector<vector<double>> all_diagonal_2(dimension1, vector<double>(dimension1));
+    // Set 1
+    vector<vector<double>> all_diagonal1_set1(dimension1, vector<double>(dimension1));
+    vector<vector<double>> all_diagonal2_set1(dimension1, vector<double>(dimension1));
 
     for (int i = 0; i < dimension1; i++)
     {
-        all_diagonal_1[i] = get_diagonal(i, pod_matrix1_set1);
-        all_diagonal_2[i] = get_diagonal(i, pod_matrix2_set1);
+        all_diagonal1_set1[i] = get_diagonal(i, pod_matrix1_set1);
+        all_diagonal2_set1[i] = get_diagonal(i, pod_matrix2_set1);
     }
 
-    cout << "Diagonal Set 1 Expected:" << endl;
-    for (int i = 0; i < dimension1; i++)
+    cout << "Diagonal 1 Set 1 Expected:" << endl;
+    print_partial_matrix(all_diagonal1_set1);
+
+    cout << "Diagonal 2 Set 1 Expected:" << endl;
+    print_partial_matrix(all_diagonal2_set1);
+
+    // Set 2
+    vector<vector<double>> all_diagonal1_set2(dimension2, vector<double>(dimension2));
+    vector<vector<double>> all_diagonal2_set2(dimension2, vector<double>(dimension2));
+
+    for (int i = 0; i < dimension2; i++)
     {
-        cout << "\t[";
-        for (int j = 0; j < dimension1 - 1; j++)
-        {
-            cout << all_diagonal_1[i][j] << ", ";
-        }
-        cout << all_diagonal_1[i][dimension1 - 1];
-        cout << "]" << endl;
+        all_diagonal1_set2[i] = get_diagonal(i, pod_matrix1_set2);
+        all_diagonal2_set2[i] = get_diagonal(i, pod_matrix2_set2);
     }
-    cout << "\n"
-         << endl;
+
+    cout << "Diagonal 1 Set 2 Expected:" << endl;
+    print_partial_matrix(all_diagonal2_set1);
+
+    cout << "Diagonal 2 Set 2 Expected:" << endl;
+    print_partial_matrix(all_diagonal2_set2);
+
+    // Set 3
+    vector<vector<double>> all_diagonal1_set3(dimension3, vector<double>(dimension3));
+    vector<vector<double>> all_diagonal2_set3(dimension3, vector<double>(dimension3));
+
+    for (int i = 0; i < dimension3; i++)
+    {
+        all_diagonal1_set3[i] = get_diagonal(i, pod_matrix1_set3);
+        all_diagonal2_set3[i] = get_diagonal(i, pod_matrix2_set3);
+    }
+
+    cout << "Diagonal 1 Set 3 Expected:" << endl;
+    print_partial_matrix(all_diagonal1_set3);
+
+    cout << "Diagonal 2 Set 3 Expected:" << endl;
+    print_partial_matrix(all_diagonal2_set3);
 
     // Encode Matrices into vectors with Diagonals
+    // Set 1
     vector<Plaintext> plain_matrix1_set1(dimension1), plain_matrix2_set1(dimension1);
     vector<Plaintext> plain_diagonal1_set1(dimension1), plain_diagonal2_set1(dimension1);
 
@@ -227,17 +406,45 @@ void Matrix_Vector_Multiplication(size_t poly_modulus_degree)
     {
         ckks_encoder.encode(pod_matrix1_set1[i], scale, plain_matrix1_set1[i]);
         ckks_encoder.encode(pod_matrix2_set1[i], scale, plain_matrix2_set1[i]);
-        ckks_encoder.encode(all_diagonal_1[i], scale, plain_diagonal1_set1[i]);
-        ckks_encoder.encode(all_diagonal_2[i], scale, plain_diagonal2_set1[i]);
+        ckks_encoder.encode(all_diagonal1_set1[i], scale, plain_diagonal1_set1[i]);
+        ckks_encoder.encode(all_diagonal2_set1[i], scale, plain_diagonal2_set1[i]);
     }
 
-    cout << "Encoding is Complete" << endl;
+    cout << "Encoding Set 1 is Complete" << endl;
+
+    // Set 2
+    vector<Plaintext> plain_matrix1_set2(dimension2), plain_matrix2_set2(dimension2);
+    vector<Plaintext> plain_diagonal1_set2(dimension2), plain_diagonal2_set2(dimension2);
+
+    for (int i = 0; i < dimension2; i++)
+    {
+        ckks_encoder.encode(pod_matrix1_set2[i], scale, plain_matrix1_set2[i]);
+        ckks_encoder.encode(pod_matrix2_set2[i], scale, plain_matrix2_set2[i]);
+        ckks_encoder.encode(all_diagonal1_set2[i], scale, plain_diagonal1_set2[i]);
+        ckks_encoder.encode(all_diagonal2_set2[i], scale, plain_diagonal2_set2[i]);
+    }
+
+    cout << "Encoding Set 2 is Complete" << endl;
+
+    // Set 3
+    vector<Plaintext> plain_matrix1_set3(dimension3), plain_matrix2_set3(dimension3);
+    vector<Plaintext> plain_diagonal1_set3(dimension3), plain_diagonal2_set3(dimension3);
+
+    for (int i = 0; i < dimension3; i++)
+    {
+        ckks_encoder.encode(pod_matrix1_set3[i], scale, plain_matrix1_set3[i]);
+        ckks_encoder.encode(pod_matrix2_set3[i], scale, plain_matrix2_set3[i]);
+        ckks_encoder.encode(all_diagonal1_set3[i], scale, plain_diagonal1_set3[i]);
+        ckks_encoder.encode(all_diagonal2_set3[i], scale, plain_diagonal2_set3[i]);
+    }
+
+    cout << "Encoding Set 3 is Complete" << endl;
 
     // Encrypt the matrices with Diagonals
+    // Set 1
     vector<Ciphertext> cipher_matrix1_set1(dimension1), cipher_matrix2_set1(dimension1);
     vector<Ciphertext> cipher_diagonal1_set1(dimension1), cipher_diagonal2_set1(dimension1);
 
-    // First set cipher
     for (unsigned int i = 0; i < dimension1; i++)
     {
         encryptor.encrypt(plain_matrix1_set1[i], cipher_matrix1_set1[i]);
@@ -245,236 +452,231 @@ void Matrix_Vector_Multiplication(size_t poly_modulus_degree)
         encryptor.encrypt(plain_diagonal1_set1[i], cipher_diagonal1_set1[i]);
         encryptor.encrypt(plain_diagonal2_set1[i], cipher_diagonal2_set1[i]);
     }
-    cout << "Encrypting is Complete" << endl;
+    cout << "Encrypting Set 1 is Complete" << endl;
 
-    // test decrypt here
-    for (unsigned int i = 0; i < dimension1; i++)
+    // Set 2
+    vector<Ciphertext> cipher_matrix1_set2(dimension2), cipher_matrix2_set2(dimension2);
+    vector<Ciphertext> cipher_diagonal1_set2(dimension2), cipher_diagonal2_set2(dimension2);
+
+    for (unsigned int i = 0; i < dimension2; i++)
     {
-        decryptor.decrypt(cipher_matrix1_set1[i], plain_matrix1_set1[i]);
-        decryptor.decrypt(cipher_matrix2_set1[i], plain_matrix2_set1[i]);
-        decryptor.decrypt(cipher_diagonal1_set1[i], plain_diagonal1_set1[i]);
-        decryptor.decrypt(cipher_diagonal2_set1[i], plain_diagonal2_set1[i]);
+        encryptor.encrypt(plain_matrix1_set2[i], cipher_matrix1_set2[i]);
+        encryptor.encrypt(plain_matrix2_set2[i], cipher_matrix2_set2[i]);
+        encryptor.encrypt(plain_diagonal1_set2[i], cipher_diagonal1_set2[i]);
+        encryptor.encrypt(plain_diagonal2_set2[i], cipher_diagonal2_set2[i]);
     }
+    cout << "Encrypting Set 2 is Complete" << endl;
 
-    // test decode here
-    // test decrypt here
-    for (unsigned int i = 0; i < dimension1; i++)
+    // Set 3
+    vector<Ciphertext> cipher_matrix1_set3(dimension3), cipher_matrix2_set3(dimension3);
+    vector<Ciphertext> cipher_diagonal1_set3(dimension3), cipher_diagonal2_set3(dimension3);
+
+    for (unsigned int i = 0; i < dimension3; i++)
     {
-        ckks_encoder.decode(plain_diagonal1_set1[i], all_diagonal_1[i]);
-        ckks_encoder.decode(plain_diagonal2_set1[i], all_diagonal_2[i]);
+        encryptor.encrypt(plain_matrix1_set3[i], cipher_matrix1_set3[i]);
+        encryptor.encrypt(plain_matrix2_set3[i], cipher_matrix2_set3[i]);
+        encryptor.encrypt(plain_diagonal1_set3[i], cipher_diagonal1_set3[i]);
+        encryptor.encrypt(plain_diagonal2_set3[i], cipher_diagonal2_set3[i]);
     }
+    cout << "Encrypting Set 3 is Complete" << endl;
 
-    // test print output
-    cout << "\nDiagonal Set 1 Result:" << endl;
-    for (unsigned int i = 0; i < dimension1; i++)
-    {
-        cout << "\t[";
-        for (unsigned int j = 0; j < dimension1 - 1; j++)
+    /*
+        // test decrypt here
+        for (unsigned int i = 0; i < dimension1; i++)
         {
-            cout << all_diagonal_1[i][j] << ", ";
+            decryptor.decrypt(cipher_matrix1_set1[i], plain_matrix1_set1[i]);
+            decryptor.decrypt(cipher_matrix2_set1[i], plain_matrix2_set1[i]);
+            decryptor.decrypt(cipher_diagonal1_set1[i], plain_diagonal1_set1[i]);
+            decryptor.decrypt(cipher_diagonal2_set1[i], plain_diagonal2_set1[i]);
         }
-        cout << all_diagonal_1[i][dimension1 - 1];
-        cout << "]" << endl;
-    }
-    cout << "\n"
-         << endl;
 
-    // Create ciphertext output
-    // Set 1 output
-    // vector<Ciphertext> cipher_result1_set1(dimension1), cipher_result2_set1(dimension1), cipher_result3_set1(dimension1), cipher_result4_set1(dimension1);
-
-    // Test LinearTransform here
-    Ciphertext ct_prime = Linear_Transform(cipher_matrix1_set1[0], plain_diagonal1_set1, gal_keys, params);
-    /*  UNCOMMENT TO DEBUG LINEAR TRANSFORM FUNCTION
-    // Fill ct
-    Ciphertext ct_rotated;
-    evaluator.rotate_vector(cipher_matrix1_set1[0], -dimension1, gal_keys, ct_rotated);
-    Ciphertext ct;
-    evaluator.add(cipher_matrix1_set1[0], ct_rotated, ct);
-
-    // Add epsilon to avoid negative numbers
-    vector<double> epsilon_vec(poly_modulus_degree / 2);
-    for (int i = 0; i < epsilon_vec.size(); i++)
-    {
-        epsilon_vec[i] = 0.0000;
-    }
-    Plaintext epsilon_plain;
-    ckks_encoder.encode(epsilon_vec, scale, epsilon_plain);
-    evaluator.add_plain_inplace(ct, epsilon_plain);
-
-    // test fill ct
-    Plaintext test_fill;
-    decryptor.decrypt(ct, test_fill);
-    vector<double> out_fill;
-    ckks_encoder.decode(test_fill, out_fill);
-    cout << "Filled CT:\n"
-         << endl;
-    for (int i = 0; i < dimension1; i++)
-    {
-        cout << out_fill[i] << ", ";
-    }
-    cout << "\n"
-         << endl;
-
-    Ciphertext ct_prime;
-    // ct` = CMult(ct, u0)
-    evaluator.multiply_plain(ct, plain_diagonal1_set1[0], ct_prime);
-
-    // test mult plain 0
-    Plaintext test_0;
-    decryptor.decrypt(ct_prime, test_0);
-    vector<double> out_test_0;
-    ckks_encoder.decode(test_0, out_test_0);
-    cout << "CT_Prime 0 :\n"
-         << endl;
-    for (int i = 0; i < dimension1; i++)
-    {
-        cout << out_test_0[i] << ", ";
-    }
-    cout << "\n"
-         << endl;
-
-    for (int l = 1; l < dimension1; l++)
-    {
-        // ct` = Add(ct`, CMult(Rot(ct, l), ul))
-        Ciphertext temp_rot;
-        Ciphertext temp_mul;
-        evaluator.rotate_vector(ct, l, gal_keys, temp_rot);
-        evaluator.multiply_plain(temp_rot, plain_diagonal1_set1[l], temp_mul);
-        evaluator.add_inplace(ct_prime, temp_mul);
-
-        // test decrypt
-        Plaintext temp_rot_plain;
-        Plaintext temp_mul_plain;
-        Plaintext temp_ct_prime;
-
-        decryptor.decrypt(temp_rot, temp_rot_plain);
-        decryptor.decrypt(temp_mul, temp_mul_plain);
-        decryptor.decrypt(ct_prime, temp_ct_prime);
-
-        // test decode
-        vector<double> test_out_rot, test_out_mul, test_ct_prime;
-        vector<double> test_diag;
-        ckks_encoder.decode(temp_ct_prime, test_ct_prime);
-        ckks_encoder.decode(temp_mul_plain, test_out_mul);
-        ckks_encoder.decode(temp_rot_plain, test_out_rot);
-        ckks_encoder.decode(plain_diagonal1_set1[l], test_diag);
-
-        cout << "Rotation " << l << "\n"
-             << endl;
-        cout << "\nrotated vec:\n\t[";
-        for (int j = 0; j < dimension1; j++)
+        // test decode here
+        // test decrypt here
+        for (unsigned int i = 0; i < dimension1; i++)
         {
-            cout << test_out_rot[j] << ", ";
+            ckks_encoder.decode(plain_diagonal1_set1[i], all_diagonal_1[i]);
+            ckks_encoder.decode(plain_diagonal2_set1[i], all_diagonal_2[i]);
         }
-        cout << "\nDiagonal vec:\n\t[";
-        for (int j = 0; j < dimension1; j++)
-        {
-            cout << test_diag[j] << ", ";
-        }
-        cout << "\nMult vec vec:\n\t[";
 
-        for (int j = 0; j < dimension1; j++)
+        // test print output
+        cout << "\nDiagonal Set 1 Result:" << endl;
+        for (unsigned int i = 0; i < dimension1; i++)
         {
-            cout << test_out_mul[j] << ", ";
-        }
-        cout << "\nCt_prime vec:\n\t[";
-
-        for (int j = 0; j < dimension1; j++)
-        {
-            cout << test_ct_prime[j] << ", ";
+            cout << "\t[";
+            for (unsigned int j = 0; j < dimension1 - 1; j++)
+            {
+                cout << all_diagonal_1[i][j] << ", ";
+            }
+            cout << all_diagonal_1[i][dimension1 - 1];
+            cout << "]" << endl;
         }
         cout << "\n"
-             << endl;
-    }
-*/
+            << endl;
+    */
+    // Test LinearTransform here
+    // Set 1
+    Ciphertext ct_prime_set1 = Linear_Transform(cipher_matrix1_set1[0], plain_diagonal1_set1, gal_keys, params);
+    /*  
+        UNCOMMENT TO DEBUG LINEAR TRANSFORM FUNCTION
+        // Fill ct
+        Ciphertext ct_rotated;
+        evaluator.rotate_vector(cipher_matrix1_set1[0], -dimension1, gal_keys, ct_rotated);
+        Ciphertext ct;
+        evaluator.add(cipher_matrix1_set1[0], ct_rotated, ct);
+
+        // Add epsilon to avoid negative numbers
+        vector<double> epsilon_vec(poly_modulus_degree / 2);
+        for (int i = 0; i < epsilon_vec.size(); i++)
+        {
+            epsilon_vec[i] = 0.0000;
+        }
+        Plaintext epsilon_plain;
+        ckks_encoder.encode(epsilon_vec, scale, epsilon_plain);
+        evaluator.add_plain_inplace(ct, epsilon_plain);
+
+        // test fill ct
+        Plaintext test_fill;
+        decryptor.decrypt(ct, test_fill);
+        vector<double> out_fill;
+        ckks_encoder.decode(test_fill, out_fill);
+        cout << "Filled CT:\n"
+            << endl;
+        for (int i = 0; i < dimension1; i++)
+        {
+            cout << out_fill[i] << ", ";
+        }
+        cout << "\n"
+            << endl;
+
+        Ciphertext ct_prime;
+        // ct` = CMult(ct, u0)
+        evaluator.multiply_plain(ct, plain_diagonal1_set1[0], ct_prime);
+
+        // test mult plain 0
+        Plaintext test_0;
+        decryptor.decrypt(ct_prime, test_0);
+        vector<double> out_test_0;
+        ckks_encoder.decode(test_0, out_test_0);
+        cout << "CT_Prime 0 :\n"
+            << endl;
+        for (int i = 0; i < dimension1; i++)
+        {
+            cout << out_test_0[i] << ", ";
+        }
+        cout << "\n"
+            << endl;
+
+        for (int l = 1; l < dimension1; l++)
+        {
+            // ct` = Add(ct`, CMult(Rot(ct, l), ul))
+            Ciphertext temp_rot;
+            Ciphertext temp_mul;
+            evaluator.rotate_vector(ct, l, gal_keys, temp_rot);
+            evaluator.multiply_plain(temp_rot, plain_diagonal1_set1[l], temp_mul);
+            evaluator.add_inplace(ct_prime, temp_mul);
+
+            // test decrypt
+            Plaintext temp_rot_plain;
+            Plaintext temp_mul_plain;
+            Plaintext temp_ct_prime;
+
+            decryptor.decrypt(temp_rot, temp_rot_plain);
+            decryptor.decrypt(temp_mul, temp_mul_plain);
+            decryptor.decrypt(ct_prime, temp_ct_prime);
+
+            // test decode
+            vector<double> test_out_rot, test_out_mul, test_ct_prime;
+            vector<double> test_diag;
+            ckks_encoder.decode(temp_ct_prime, test_ct_prime);
+            ckks_encoder.decode(temp_mul_plain, test_out_mul);
+            ckks_encoder.decode(temp_rot_plain, test_out_rot);
+            ckks_encoder.decode(plain_diagonal1_set1[l], test_diag);
+
+            cout << "Rotation " << l << "\n"
+                << endl;
+            cout << "\nrotated vec:\n\t[";
+            for (int j = 0; j < dimension1; j++)
+            {
+                cout << test_out_rot[j] << ", ";
+            }
+            cout << "\nDiagonal vec:\n\t[";
+            for (int j = 0; j < dimension1; j++)
+            {
+                cout << test_diag[j] << ", ";
+            }
+            cout << "\nMult vec vec:\n\t[";
+
+            for (int j = 0; j < dimension1; j++)
+            {
+                cout << test_out_mul[j] << ", ";
+            }
+            cout << "\nCt_prime vec:\n\t[";
+
+            for (int j = 0; j < dimension1; j++)
+            {
+                cout << test_ct_prime[j] << ", ";
+            }
+            cout << "\n"
+                << endl;
+        }
+    */
     // Decrypt
-    Plaintext pt_result;
-    decryptor.decrypt(ct_prime, pt_result);
+    Plaintext pt_result_set1;
+    decryptor.decrypt(ct_prime_set1, pt_result_set1);
 
     // Decode
-    vector<double> output_result;
-    ckks_encoder.decode(pt_result, output_result);
+    vector<double> output_result_set1;
+    ckks_encoder.decode(pt_result_set1, output_result_set1);
 
-    cout << "Linear Transformation Result:" << endl;
-    cout << "\t[";
-    for (int i = 0; i < dimension1 - 1; i++)
-    {
-        cout << output_result[i] << ", ";
-    }
-    cout << output_result[dimension1 - 1];
+    cout << "Linear Transformation Set 1 Result:" << endl;
+    print_partial_vector(output_result_set1, dimension1);
 
-    cout << "]" << endl;
+    // Check result
+    cout << "Expected output Set 1: " << endl;
 
-    // test decrypt
-    Plaintext test_cipher;
-    decryptor.decrypt(cipher_matrix1_set1[0], test_cipher);
+    test_Linear_Transformation(dimension1, pod_matrix1_set1, pod_matrix1_set1[0]);
 
-    // Test decode
-    vector<double> test_cipher_out;
-    vector<double> test_plain_out;
+    // Set 2
+    Ciphertext ct_prime_set2 = Linear_Transform(cipher_matrix1_set2[0], plain_diagonal1_set2, gal_keys, params);
+    // Decrypt
+    Plaintext pt_result_set2;
+    decryptor.decrypt(ct_prime_set2, pt_result_set2);
 
-    ckks_encoder.decode(test_cipher, test_cipher_out);
-    cout << "First row cipher:" << endl;
-    cout << "\t[";
-    for (int i = 0; i < dimension1 - 1; i++)
-    {
-        cout << test_cipher_out[i] << ", ";
-    }
-    cout << test_cipher_out[dimension1 - 1];
+    // Decode
+    vector<double> output_result_set2;
+    ckks_encoder.decode(pt_result_set2, output_result_set2);
 
-    cout << "]" << endl;
-}
+    cout << "Linear Transformation Set 2 Result:" << endl;
+    print_partial_vector(output_result_set2, dimension2);
 
-void test_Linear_Transformation()
-{
-    int dimension1 = 12;
-    // cout << "Dimension Set 1: " << dimension1 << endl
-    //      << endl;
+    // Check result
+    cout << "Expected output Set 2: " << endl;
 
-    vector<vector<double>> pod_matrix1_set1(dimension1, vector<double>(dimension1));
-    vector<vector<double>> pod_matrix2_set1(dimension1, vector<double>(dimension1));
+    test_Linear_Transformation(dimension2, pod_matrix1_set2, pod_matrix1_set2[0]);
 
-    // Fill input matrices
-    double filler = 1.0;
-    // Set 1
-    for (int i = 0; i < dimension1; i++)
-    {
-        for (int j = 0; j < dimension1; j++)
-        {
-            pod_matrix1_set1[i][j] = filler;
-            pod_matrix2_set1[i][j] = static_cast<double>((j % 2) + 1);
-            filler++;
-        }
-    }
-    // print_full_matrix(pod_matrix1_set1);
-    // print_full_matrix(pod_matrix2_set1);
+    // Set 3
+    Ciphertext ct_prime_set3 = Linear_Transform(cipher_matrix1_set3[0], plain_diagonal1_set3, gal_keys, params);
+    // Decrypt
+    Plaintext pt_result_set3;
+    decryptor.decrypt(ct_prime_set3, pt_result_set3);
 
-    vector<double> input_vec = pod_matrix1_set1[0];
-    vector<double> result(dimension1);
-    int k = 0;
-    for (int i = 0; i < dimension1; i++)
-    {
-        for (int j = 0; j < dimension1; j++)
-        {
-            result[k] += pod_matrix1_set1[i][j] * input_vec[j];
-        }
-        k++;
-    }
+    // Decode
+    vector<double> output_result_set3;
+    ckks_encoder.decode(pt_result_set3, output_result_set3);
 
-    // Print Result vector
-    cout << "Expected Result Vector: \n\t[";
-    for (int i = 0; i < dimension1 - 1; i++)
-    {
-        cout << result[i] << ", ";
-    }
-    cout << result[dimension1 - 1] << "]" << endl;
+    cout << "Linear Transformation Set 3 Result:" << endl;
+    print_partial_vector(output_result_set3, dimension3);
+
+    // Check result
+    cout << "Expected output Set 3: " << endl;
+    test_Linear_Transformation(dimension3, pod_matrix1_set3, pod_matrix1_set3[0]);
+
+    outf.close();
 }
 
 int main()
 {
     Matrix_Vector_Multiplication(8192);
-    test_Linear_Transformation();
 
     return 0;
 }
