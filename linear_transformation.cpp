@@ -146,7 +146,7 @@ vector<T> get_diagonal(int position, vector<vector<T>> U)
     return diagonal;
 }
 
-Ciphertext Linear_Transform(Ciphertext ct, vector<Plaintext> U_diagonals, GaloisKeys gal_keys, EncryptionParameters params)
+Ciphertext Linear_Transform_Plain(Ciphertext ct, vector<Plaintext> U_diagonals, GaloisKeys gal_keys, EncryptionParameters params)
 {
     auto context = SEALContext::Create(params);
     Evaluator evaluator(context);
@@ -166,6 +166,33 @@ Ciphertext Linear_Transform(Ciphertext ct, vector<Plaintext> U_diagonals, Galois
         Ciphertext temp_rot;
         evaluator.rotate_vector(ct_new, l, gal_keys, temp_rot);
         evaluator.multiply_plain(temp_rot, U_diagonals[l], ct_result[l]);
+    }
+    Ciphertext ct_prime;
+    evaluator.add_many(ct_result, ct_prime);
+
+    return ct_prime;
+}
+
+Ciphertext Linear_Transform_Cipher(Ciphertext ct, vector<Ciphertext> U_diagonals, GaloisKeys gal_keys, EncryptionParameters params)
+{
+    auto context = SEALContext::Create(params);
+    Evaluator evaluator(context);
+
+    // Fill ct with duplicate
+    Ciphertext ct_rot;
+    evaluator.rotate_vector(ct, -U_diagonals.size(), gal_keys, ct_rot);
+    // cout << "U_diagonals.size() = " << U_diagonals.size() << endl;
+    Ciphertext ct_new;
+    evaluator.add(ct, ct_rot, ct_new);
+
+    vector<Ciphertext> ct_result(U_diagonals.size());
+    evaluator.multiply(ct_new, U_diagonals[0], ct_result[0]);
+
+    for (int l = 1; l < U_diagonals.size(); l++)
+    {
+        Ciphertext temp_rot;
+        evaluator.rotate_vector(ct_new, l, gal_keys, temp_rot);
+        evaluator.multiply(temp_rot, U_diagonals[l], ct_result[l]);
     }
     Ciphertext ct_prime;
     evaluator.add_many(ct_result, ct_prime);
@@ -243,6 +270,11 @@ void Matrix_Vector_Multiplication(size_t poly_modulus_degree)
     outscript << "set title \"Linear Transformation Benchmark " << to_string(poly_modulus_degree) << "\"" << endl;
     outscript << "set xlabel 'Dimension'" << endl;
     outscript << "set ylabel 'Time (microseconds)'" << endl;
+    outscript << "set logscale" << endl;
+    outscript << "set ytics nomirror" << endl;
+    outscript << "set xtics nomirror" << endl;
+    outscript << "set grid" << endl;
+    outscript << "set key outside" << endl;
 
     outscript << "\n# Set the styling " << endl;
     outscript << "set style line 1\\\n"
@@ -257,22 +289,8 @@ void Matrix_Vector_Multiplication(size_t poly_modulus_degree)
               << "pointtype 5 pointsize 1.5\n"
               << endl;
 
-    outscript << "set style line 3\\\n"
-              << "linecolor rgb '#00FF00'\\\n"
-              << "linetype 1 linewidth 2\\\n"
-              << "pointtype 6 pointsize 1.5\n"
-              << endl;
-
-    outscript << "set style line 4\\\n"
-              << "linecolor rgb '#EC00EC'\\\n"
-              << "linetype 1 linewidth 2\\\n"
-              << "pointtype 4 pointsize 1.5\n"
-              << endl;
-
-    outscript << "\nplot 'linear_transf_" << to_string(poly_modulus_degree) << ".dat' index 0 title \"Encode\" with linespoints ls 1, \\\n"
-              << "'' index 1 title \"Encrypt\"  with linespoints ls 2, \\\n"
-              << "'' index 2 title \"C1 * P2\"  with linespoints ls 3, \\\n"
-              << "'' index 3 title \"C1 * C2\"  with linespoints ls 4";
+    outscript << "\nplot 'linear_transf_" << to_string(poly_modulus_degree) << ".dat' index 0 title \"C_Vec * P_Mat\" with linespoints ls 1, \\\n"
+              << "'' index 1 title \"C_Vec * C_Mat\"  with linespoints ls 2";
     // Close script
     outscript.close();
 
@@ -480,6 +498,10 @@ void Matrix_Vector_Multiplication(size_t poly_modulus_degree)
     }
     cout << "Encrypting Set 3 is Complete" << endl;
 
+    // ------------- FIRST COMPUTATION ----------------
+    outf << "# index 0" << endl;
+    outf << "# C_Vec . P_Mat" << endl;
+
     /*
         // test decrypt here
         for (unsigned int i = 0; i < dimension1; i++)
@@ -515,7 +537,10 @@ void Matrix_Vector_Multiplication(size_t poly_modulus_degree)
     */
     // Test LinearTransform here
     // Set 1
-    Ciphertext ct_prime_set1 = Linear_Transform(cipher_matrix1_set1[0], plain_diagonal1_set1, gal_keys, params);
+    auto start_comp1_set1 = chrono::high_resolution_clock::now();
+    Ciphertext ct_prime1_set1 = Linear_Transform_Plain(cipher_matrix1_set1[0], plain_diagonal1_set1, gal_keys, params);
+    auto stop_comp1_set1 = chrono::high_resolution_clock::now();
+
     /*  
         UNCOMMENT TO DEBUG LINEAR TRANSFORM FUNCTION
         // Fill ct
@@ -621,15 +646,19 @@ void Matrix_Vector_Multiplication(size_t poly_modulus_degree)
         }
     */
     // Decrypt
-    Plaintext pt_result_set1;
-    decryptor.decrypt(ct_prime_set1, pt_result_set1);
+    Plaintext pt_result1_set1;
+    decryptor.decrypt(ct_prime1_set1, pt_result1_set1);
 
     // Decode
-    vector<double> output_result_set1;
-    ckks_encoder.decode(pt_result_set1, output_result_set1);
+    vector<double> output_result1_set1;
+    ckks_encoder.decode(pt_result1_set1, output_result1_set1);
+
+    auto duration_comp1_set1 = chrono::duration_cast<chrono::microseconds>(stop_comp1_set1 - start_comp1_set1);
+    cout << "\nTime to compute C_vec . P_mat: " << duration_comp1_set1.count() << " microseconds" << endl;
+    outf << "10\t\t" << duration_comp1_set1.count() << endl;
 
     cout << "Linear Transformation Set 1 Result:" << endl;
-    print_partial_vector(output_result_set1, dimension1);
+    print_partial_vector(output_result1_set1, dimension1);
 
     // Check result
     cout << "Expected output Set 1: " << endl;
@@ -637,7 +666,10 @@ void Matrix_Vector_Multiplication(size_t poly_modulus_degree)
     test_Linear_Transformation(dimension1, pod_matrix1_set1, pod_matrix1_set1[0]);
 
     // Set 2
-    Ciphertext ct_prime_set2 = Linear_Transform(cipher_matrix1_set2[0], plain_diagonal1_set2, gal_keys, params);
+    auto start_comp1_set2 = chrono::high_resolution_clock::now();
+    Ciphertext ct_prime_set2 = Linear_Transform_Plain(cipher_matrix1_set2[0], plain_diagonal1_set2, gal_keys, params);
+    auto stop_comp1_set2 = chrono::high_resolution_clock::now();
+
     // Decrypt
     Plaintext pt_result_set2;
     decryptor.decrypt(ct_prime_set2, pt_result_set2);
@@ -645,6 +677,10 @@ void Matrix_Vector_Multiplication(size_t poly_modulus_degree)
     // Decode
     vector<double> output_result_set2;
     ckks_encoder.decode(pt_result_set2, output_result_set2);
+
+    auto duration_comp1_set2 = chrono::duration_cast<chrono::microseconds>(stop_comp1_set2 - start_comp1_set2);
+    cout << "\nTime to compute C_vec . P_mat: " << duration_comp1_set2.count() << " microseconds" << endl;
+    outf << "100\t\t" << duration_comp1_set2.count() << endl;
 
     cout << "Linear Transformation Set 2 Result:" << endl;
     print_partial_vector(output_result_set2, dimension2);
@@ -655,7 +691,9 @@ void Matrix_Vector_Multiplication(size_t poly_modulus_degree)
     test_Linear_Transformation(dimension2, pod_matrix1_set2, pod_matrix1_set2[0]);
 
     // Set 3
-    Ciphertext ct_prime_set3 = Linear_Transform(cipher_matrix1_set3[0], plain_diagonal1_set3, gal_keys, params);
+    auto start_comp1_set3 = chrono::high_resolution_clock::now();
+    Ciphertext ct_prime_set3 = Linear_Transform_Plain(cipher_matrix1_set3[0], plain_diagonal1_set3, gal_keys, params);
+    auto stop_comp1_set3 = chrono::high_resolution_clock::now();
     // Decrypt
     Plaintext pt_result_set3;
     decryptor.decrypt(ct_prime_set3, pt_result_set3);
@@ -664,6 +702,10 @@ void Matrix_Vector_Multiplication(size_t poly_modulus_degree)
     vector<double> output_result_set3;
     ckks_encoder.decode(pt_result_set3, output_result_set3);
 
+    auto duration_comp1_set3 = chrono::duration_cast<chrono::microseconds>(stop_comp1_set3 - start_comp1_set3);
+    cout << "\nTime to compute C_vec . P_mat: " << duration_comp1_set3.count() << " microseconds" << endl;
+    outf << "1000\t\t" << duration_comp1_set3.count() << endl;
+
     cout << "Linear Transformation Set 3 Result:" << endl;
     print_partial_vector(output_result_set3, dimension3);
 
@@ -671,6 +713,89 @@ void Matrix_Vector_Multiplication(size_t poly_modulus_degree)
     cout << "Expected output Set 3: " << endl;
     test_Linear_Transformation(dimension3, pod_matrix1_set3, pod_matrix1_set3[0]);
 
+    outf << "\n"
+         << endl;
+
+    // ------------- SECOND COMPUTATION ----------------
+    outf << "# index 1" << endl;
+    outf << "# C_Vec . C_Mat" << endl;
+    // Set 1
+    auto start_comp2_set1 = chrono::high_resolution_clock::now();
+    Ciphertext ct_prime2_set1 = Linear_Transform_Cipher(cipher_matrix1_set1[0], cipher_diagonal1_set1, gal_keys, params);
+    auto stop_comp2_set1 = chrono::high_resolution_clock::now();
+
+    // Decrypt
+    Plaintext pt_result2_set1;
+    decryptor.decrypt(ct_prime2_set1, pt_result2_set1);
+
+    // Decode
+    vector<double> output_result2_set1;
+    ckks_encoder.decode(pt_result2_set1, output_result2_set1);
+
+    auto duration_comp2_set1 = chrono::duration_cast<chrono::microseconds>(stop_comp2_set1 - start_comp2_set1);
+    cout << "\nTime to compute C_vec . C_mat: " << duration_comp2_set1.count() << " microseconds" << endl;
+    outf << "10\t\t" << duration_comp2_set1.count() << endl;
+
+    cout << "Linear Transformation Set 1 Result:" << endl;
+    print_partial_vector(output_result2_set1, dimension1);
+
+    // Check result
+    cout << "Expected output Set 1: " << endl;
+
+    test_Linear_Transformation(dimension1, pod_matrix1_set1, pod_matrix1_set1[0]);
+
+    // Set 2
+    auto start_comp2_set2 = chrono::high_resolution_clock::now();
+    Ciphertext ct_prime2_set2 = Linear_Transform_Cipher(cipher_matrix1_set2[0], cipher_diagonal1_set2, gal_keys, params);
+    auto stop_comp2_set2 = chrono::high_resolution_clock::now();
+
+    // Decrypt
+    Plaintext pt_result2_set2;
+    decryptor.decrypt(ct_prime2_set2, pt_result2_set2);
+
+    // Decode
+    vector<double> output_result2_set2;
+    ckks_encoder.decode(pt_result2_set2, output_result2_set2);
+
+    auto duration_comp2_set2 = chrono::duration_cast<chrono::microseconds>(stop_comp2_set2 - start_comp2_set2);
+    cout << "\nTime to compute C_vec . C_mat: " << duration_comp2_set2.count() << " microseconds" << endl;
+    outf << "100\t\t" << duration_comp2_set2.count() << endl;
+
+    cout << "Linear Transformation Set 2 Result:" << endl;
+    print_partial_vector(output_result2_set2, dimension2);
+
+    // Check result
+    cout << "Expected output Set 2: " << endl;
+
+    test_Linear_Transformation(dimension2, pod_matrix1_set2, pod_matrix1_set2[0]);
+
+    // Set 3
+    auto start_comp2_set3 = chrono::high_resolution_clock::now();
+    Ciphertext ct_prime2_set3 = Linear_Transform_Cipher(cipher_matrix1_set3[0], cipher_diagonal1_set3, gal_keys, params);
+    auto stop_comp2_set3 = chrono::high_resolution_clock::now();
+
+    // Decrypt
+    Plaintext pt_result2_set3;
+    decryptor.decrypt(ct_prime2_set3, pt_result2_set3);
+
+    // Decode
+    vector<double> output_result2_set3;
+    ckks_encoder.decode(pt_result2_set3, output_result2_set3);
+
+    auto duration_comp2_set3 = chrono::duration_cast<chrono::microseconds>(stop_comp2_set3 - start_comp2_set3);
+    cout << "\nTime to compute C_vec . C_mat: " << duration_comp2_set3.count() << " microseconds" << endl;
+    outf << "1000\t\t" << duration_comp2_set3.count() << endl;
+
+    cout << "Linear Transformation Set 3 Result:" << endl;
+    print_partial_vector(output_result2_set3, dimension3);
+
+    // Check result
+    cout << "Expected output Set 3: " << endl;
+
+    test_Linear_Transformation(dimension3, pod_matrix1_set3, pod_matrix1_set3[0]);
+
+    outf << "\n"
+         << endl;
     outf.close();
 }
 

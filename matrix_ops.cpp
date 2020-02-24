@@ -118,6 +118,11 @@ void slowEncoding(size_t poly_modulus_degree)
     outscript << "set title \"CKKS Matrix Ops Benchmark " << to_string(poly_modulus_degree) << "\"" << endl;
     outscript << "set xlabel 'Input Vector Size'" << endl;
     outscript << "set ylabel 'Time (microseconds)'" << endl;
+    outscript << "set logscale y" << endl;
+    outscript << "set ytics nomirror" << endl;
+    outscript << "set xtics nomirror" << endl;
+    outscript << "set grid" << endl;
+    outscript << "set key outside" << endl;
 
     outscript << "\n# Set the styling " << endl;
     outscript << "set style line 1\\\n"
@@ -1236,7 +1241,6 @@ void slowEncoding(size_t poly_modulus_degree)
 
     cout << "Compute C1 * C2 (matrix multiplication) time  Set 2: " << duration_matrix_mult_cipher_set2.count() << " microseconds" << endl;
     outf << dimension2 << "\t\t" << duration_matrix_mult_cipher_set2.count() << endl;
-    
 
     // Set 3
     vector<vector<Ciphertext>> cipher_result_matrix_mult_cipher_set3(dimension3, vector<Ciphertext>(dimension3));
@@ -1290,7 +1294,7 @@ void slowEncoding(size_t poly_modulus_degree)
     cout << endl;
     outf << "\n"
          << endl;
-         
+
     outf.close();
 }
 
