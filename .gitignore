@@ -11,6 +11,7 @@ benchmark
 benchmark2
 matrix_ops
 linear_transformation
+linear_transformation2
 *.dat
 *.html
 *.p
