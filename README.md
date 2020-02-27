@@ -21,6 +21,8 @@ The `linear_transformation.cpp` file contains an implementation of the linear tr
 
 This implementation uses rotations with element-wise multiplication and addition to perform matrix vector multiplication without using dot products. With the SIMD capability of SEAL, this method performs computations pretty quickly.
 
+The `linear_transformation2.cpp` file is a similar to `linear_transformation.cpp` but without debugging statements and 3 test cases. You can use it to perform stress tests on certain parameters.
+
 ### Vector Ops
 The `vector_ops.cpp` file consists of a small performance test for BFV and CKKS with `poly_modulus_degree = 8192`.
 
