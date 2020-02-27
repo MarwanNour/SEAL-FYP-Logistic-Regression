@@ -222,7 +222,7 @@ void PMatrix_CVector_Multiplication(size_t poly_modulus_degree, int dimension)
     // Handle Rotation Error First
     if (dimension > poly_modulus_degree / 4)
     {
-        cerr << "Dimension is too large. Choose a dimension less than " << poly_modulus_degree/4 << endl;
+        cerr << "Dimension is too large. Choose a dimension less than " << poly_modulus_degree / 4 << endl;
         exit(1);
     }
 
@@ -260,7 +260,7 @@ void PMatrix_CVector_Multiplication(size_t poly_modulus_degree, int dimension)
     }
 
     // Set output script
-    string script = "script_linear_transf_p" + to_string(poly_modulus_degree) + "_d" + to_string(dimension) + ".p";
+    string script = "linear_transf_plot_p" + to_string(poly_modulus_degree) + "_d" + to_string(dimension) + ".py";
     ofstream outscript(script);
 
     // Handle script error
@@ -271,36 +271,10 @@ void PMatrix_CVector_Multiplication(size_t poly_modulus_degree, int dimension)
     }
 
     // Write to Script
-    outscript << "# Set the output terminal" << endl;
-    outscript << "set terminal canvas" << endl;
-    outscript << "set output \"canvas_linear_transf_p" << to_string(poly_modulus_degree) << "_d" << to_string(dimension) << ".html\"" << endl;
-    outscript << "set title \"Linear Transformation Benchmark " << to_string(poly_modulus_degree) << "\"" << endl;
-    outscript << "set xlabel 'Dimension'" << endl;
-    outscript << "set ylabel 'Time (microseconds)'" << endl;
-    outscript << "set logscale" << endl;
-    outscript << "set ytics nomirror" << endl;
-    outscript << "set xtics nomirror" << endl;
-    outscript << "set grid" << endl;
-    outscript << "set key outside" << endl;
-
-    outscript << "\n# Set the styling " << endl;
-    outscript << "set style line 1\\\n"
-              << "linecolor rgb '#0060ad'\\\n"
-              << "linetype 1 linewidth 2\\\n"
-              << "pointtype 7 pointsize 1.5\n"
-              << endl;
-
-    outscript << "set style line 2\\\n"
-              << "linecolor rgb '#dd181f'\\\n"
-              << "linetype 1 linewidth 2\\\n"
-              << "pointtype 5 pointsize 1.5\n"
-              << endl;
-
-    outscript << "\nplot 'linear_transf_p" << to_string(poly_modulus_degree) << "_d" << to_string(dimension)
-              << ".dat' index 0 title \"C_Vec * P_Mat\" with linespoints ls 1, \\\n"
-              << "'' index 1 title \"C_Vec * C_Mat\"  with linespoints ls 2";
-    // Close script
-    outscript.close();
+    outscript << "import matplotlib.pyplot as plt" << endl;
+    outscript << "labels = 'Encode', 'Encrypt', 'Computation', 'Decode', 'Decrypt'" << endl;
+    outscript << "colors = ['gold', 'green', 'lightskyblue', 'red', 'violet']" << endl;
+    outscript << "sizes = [";
 
     cout << "Dimension : " << dimension << endl
          << endl;
@@ -360,6 +334,7 @@ void PMatrix_CVector_Multiplication(size_t poly_modulus_degree, int dimension)
     cout << "Encoding is Complete" << endl;
     auto duration_encode = chrono::duration_cast<chrono::microseconds>(stop_encode - start_encode);
     cout << "Encode Duration:\t" << duration_encode.count() << endl;
+    outscript << duration_encode.count() << ", ";
 
     // Encrypt the matrices with Diagonals
     vector<Ciphertext> cipher_matrix_set1(dimension);
@@ -378,6 +353,7 @@ void PMatrix_CVector_Multiplication(size_t poly_modulus_degree, int dimension)
     cout << "Encrypting is Complete" << endl;
     auto duration_encrypt = chrono::duration_cast<chrono::microseconds>(stop_encrypt - start_encrypt);
     cout << "Encrypt Duration:\t" << duration_encrypt.count() << endl;
+    outscript << duration_encrypt.count() << ", ";
 
     // ------------- FIRST COMPUTATION ----------------
     outf << "# index 0" << endl;
@@ -391,6 +367,7 @@ void PMatrix_CVector_Multiplication(size_t poly_modulus_degree, int dimension)
     auto duration_comp1_set1 = chrono::duration_cast<chrono::microseconds>(stop_comp1_set1 - start_comp1_set1);
     cout << "\nTime to compute C_vec . P_mat: " << duration_comp1_set1.count() << " microseconds" << endl;
     outf << to_string(dimension) << "\t\t" << duration_comp1_set1.count() << endl;
+    outscript << duration_comp1_set1.count() << ", ";
 
     // Decrypt
     Plaintext pt_result1_set1;
@@ -399,6 +376,7 @@ void PMatrix_CVector_Multiplication(size_t poly_modulus_degree, int dimension)
     auto stop_decrypt = chrono::high_resolution_clock::now();
     auto duration_decrypt = chrono::duration_cast<chrono::microseconds>(stop_decrypt - start_decrypt);
     cout << "Decrypt Duration:\t" << duration_decrypt.count() << endl;
+    outscript << duration_decrypt.count() << ", ";
 
     // Decode
     vector<double> output_result1_set1;
@@ -407,6 +385,7 @@ void PMatrix_CVector_Multiplication(size_t poly_modulus_degree, int dimension)
     auto stop_decode = chrono::high_resolution_clock::now();
     auto duration_decode = chrono::duration_cast<chrono::microseconds>(stop_decode - start_decode);
     cout << "Decode Duration:\t" << duration_decode.count() << endl;
+    outscript << duration_decode.count();
 
     cout << "Linear Transformation:" << endl;
     print_partial_vector(output_result1_set1, dimension);
@@ -419,6 +398,13 @@ void PMatrix_CVector_Multiplication(size_t poly_modulus_degree, int dimension)
     outf << "\n"
          << endl;
     outf.close();
+
+    outscript << "]" << endl;
+    outscript << "plt.pie(sizes, labels=labels, colors=colors, autopct='%1.1f%%')" << endl;
+    outscript << "plt.axis('equal')" << endl;
+    outscript << "plt.show()" << endl;
+
+    outscript.close();
 }
 
 int main()
