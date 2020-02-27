@@ -219,6 +219,13 @@ void test_Linear_Transformation(int dimension, vector<vector<double>> input_matr
 
 void PMatrix_CVector_Multiplication(size_t poly_modulus_degree, int dimension)
 {
+    // Handle Rotation Error First
+    if (dimension > poly_modulus_degree / 4)
+    {
+        cerr << "Dimension is too large. Choose a dimension less than " << poly_modulus_degree/4 << endl;
+        exit(1);
+    }
+
     EncryptionParameters params(scheme_type::CKKS);
     params.set_poly_modulus_degree(poly_modulus_degree);
     cout << "MAX BIT COUNT: " << CoeffModulus::MaxBitCount(poly_modulus_degree) << endl;
@@ -392,7 +399,7 @@ void PMatrix_CVector_Multiplication(size_t poly_modulus_degree, int dimension)
     auto stop_decrypt = chrono::high_resolution_clock::now();
     auto duration_decrypt = chrono::duration_cast<chrono::microseconds>(stop_decrypt - start_decrypt);
     cout << "Decrypt Duration:\t" << duration_decrypt.count() << endl;
-    
+
     // Decode
     vector<double> output_result1_set1;
     auto start_decode = chrono::high_resolution_clock::now();
@@ -416,7 +423,7 @@ void PMatrix_CVector_Multiplication(size_t poly_modulus_degree, int dimension)
 
 int main()
 {
-    PMatrix_CVector_Multiplication(8192, 100);
+    PMatrix_CVector_Multiplication(8192, 2000);
 
     return 0;
 }
