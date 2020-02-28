@@ -15,6 +15,7 @@ linear_transformation2
 *.dat
 *.html
 *.p
+*.py
 .vscode
 !.vscode/settings.json
 !.vscode/tasks.json

@@ -400,7 +400,10 @@ void PMatrix_CVector_Multiplication(size_t poly_modulus_degree, int dimension)
     outf.close();
 
     outscript << "]" << endl;
-    outscript << "plt.pie(sizes, labels=labels, colors=colors, autopct='%1.1f%%')" << endl;
+    outscript << "plt.pie(sizes, colors=colors, autopct='%.1f')" << endl;
+    outscript << "plt.title(\"Linear Transformation Test p" << to_string(poly_modulus_degree) << " d"<< to_string(dimension) <<  "\")" << endl;
+    outscript << "plt.legend(labels)" << endl;
+    outscript << "plt.tight_layout()" << endl;
     outscript << "plt.axis('equal')" << endl;
     outscript << "plt.show()" << endl;
 
