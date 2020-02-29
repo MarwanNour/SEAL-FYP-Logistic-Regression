@@ -123,6 +123,17 @@ inline void print_partial_vector(vector<T> vec, int size, int print_size = 3, in
     cout.copyfmt(old_fmt);
 }
 
+template <typename T>
+void print_full_vector(vector<T> vec)
+{
+    cout << "\t[ ";
+    for (unsigned int i = 0; i < vec.size() - 1; i++)
+    {
+        cout << vec[i] << ", ";
+    }
+    cout << vec[vec.size() - 1] << " ]" << endl;
+}
+
 // Gets a diagonal from a matrix U
 template <typename T>
 vector<T> get_diagonal(int position, vector<vector<T>> U)
@@ -288,18 +299,21 @@ vector<vector<int>> get_U_sigma(vector<vector<T>> U)
     vector<vector<int>> U_sigma(dimensionSq, vector<int>(dimensionSq));
 
     int k = 0;
-    int index_sigma = 0;
-    for (int offset = 0; offset < dimensionSq - dimension; offset += dimension)
+    int sigma_row = 0;
+    for (int offset = 0; offset < dimensionSq; offset += dimension)
     {
         // Get the matrix of ones at position k
         vector<vector<int>> one_matrix = get_matrix_of_ones(k, U);
+        print_full_matrix(one_matrix);
         // Loop over the matrix of ones
         for (int one_matrix_index = 0; one_matrix_index < dimension; one_matrix_index++)
         {
             // Pad with zeros the vector of one
             vector<int> temp_fill = pad_zero(offset, one_matrix[one_matrix_index]);
             // Store vector in U_sigma at position index_sigma
-            U_sigma[index_sigma] = temp_fill;
+            print_full_vector(temp_fill);
+            U_sigma[sigma_row] = temp_fill;
+            sigma_row++;
         }
 
         k++;
@@ -311,7 +325,7 @@ vector<vector<int>> get_U_sigma(vector<vector<T>> U)
 int main()
 {
 
-    int dimension1 = 10;
+    int dimension1 = 4;
     vector<vector<double>> pod_matrix1_set1(dimension1, vector<double>(dimension1));
 
     // Fill input matrices
@@ -332,16 +346,8 @@ int main()
     // print_full_matrix(U_0);
 
     vector<vector<int>> U_sigma = get_U_sigma(pod_matrix1_set1);
-    print_partial_matrix(U_sigma, 10);
-
-    vector<int> pad = pad_zero(20, pod_matrix1_set1[0]);
-
-    cout << "\t[";
-    for (int i = 0; i < pad.size(); i++)
-    {
-        cout << pad[i] << ", ";
-    }
-    cout << endl;
     // print_partial_matrix(U_sigma);
+    print_full_matrix(U_sigma);
+
     return 0;
 }
