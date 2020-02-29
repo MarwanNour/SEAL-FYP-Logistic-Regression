@@ -12,6 +12,7 @@ benchmark2
 matrix_ops
 linear_transformation
 linear_transformation2
+matrix_multiplication
 *.dat
 *.html
 *.p

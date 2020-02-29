@@ -146,6 +146,32 @@ vector<T> get_diagonal(int position, vector<vector<T>> U)
     return diagonal;
 }
 
+template <typename T>
+vector<vector<int>> get_matrix_of_ones(int position, vector<vector<T>> U)
+{
+    vector<vector<int>> diagonal_of_ones(U.size(), vector<int>(U.size()));
+    vector<T> U_diag = get_diagonal(position, U);
+
+    int k = 0;
+    for (int i = 0; i < U.size(); i++)
+    {
+        for (int j = 0; j < U.size(); j++)
+        {
+            if (U[i][j] == U_diag[k])
+            {
+                diagonal_of_ones[i][j] = 1;
+            }
+            else
+            {
+                diagonal_of_ones[i][j] = 0;
+            }
+        }
+        k++;
+    }
+
+    return diagonal_of_ones;
+}
+
 Ciphertext Linear_Transform_Plain(Ciphertext ct, vector<Plaintext> U_diagonals, GaloisKeys gal_keys, EncryptionParameters params)
 {
     auto context = SEALContext::Create(params);
@@ -234,19 +260,37 @@ Ciphertext Matrix_Encode(vector<Ciphertext> matrix, GaloisKeys gal_keys, Encrypt
 template <typename T>
 vector<vector<T>> get_U_sigma(vector<vector<T>> U)
 {
-    vector<vector<T>> U_sigma(pow(U.size, 2), vector<T>(pow(U.size, 2)));
-    for (int i = 0; i < pow(U.size(), 2); i++)
-    {
-        
-        for (int j = 0; j < pow(U.size(), 2); j+= U.size())     // column jumps every segment size 
-        {
+    int dimension = U.size();
+    vector<vector<T>> U_sigma(pow(dimension, 2), vector<T>(pow(dimension, 2)));
+    int offset = 0;
 
-        }
-    }
+    return U_sigma;
 }
 
 int main()
 {
+
+    int dimension1 = 10;
+    vector<vector<double>> pod_matrix1_set1(dimension1, vector<double>(dimension1));
+    vector<vector<double>> pod_matrix2_set1(dimension1, vector<double>(dimension1));
+
+    // Fill input matrices
+    double filler = 0.0;
+    // Set 1
+    for (int i = 0; i < dimension1; i++)
+    {
+        for (int j = 0; j < dimension1; j++)
+        {
+            pod_matrix1_set1[i][j] = filler;
+            pod_matrix2_set1[i][j] = static_cast<double>((j % 2) + 1);
+            filler++;
+        }
+    }
+    print_partial_matrix(pod_matrix1_set1);
+
+    vector<vector<int>> U_0 = get_matrix_of_ones(2, pod_matrix1_set1);
+
+    print_full_matrix(U_0);
 
     return 0;
 }
