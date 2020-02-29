@@ -256,13 +256,54 @@ Ciphertext Matrix_Encode(vector<Ciphertext> matrix, GaloisKeys gal_keys, Encrypt
     return ct_result;
 }
 
+template <typename T>
+vector<int> pad_zero(int offset, vector<T> U_vec)
+{
+
+    vector<int> result_vec(pow(U_vec.size(), 2));
+    // Fill before U_vec
+    for (int i = 0; i < offset; i++)
+    {
+        result_vec[i] = 0;
+    }
+    // Fill U_vec
+    for (int i = 0; i < U_vec.size(); i++)
+    {
+        result_vec[i + offset] = U_vec[i];
+    }
+    // Fill after U_vec
+    for (int i = offset + U_vec.size(); i < result_vec.size(); i++)
+    {
+        result_vec[i] = 0;
+    }
+    return result_vec;
+}
+
 // U_sigma
 template <typename T>
-vector<vector<T>> get_U_sigma(vector<vector<T>> U)
+vector<vector<int>> get_U_sigma(vector<vector<T>> U)
 {
     int dimension = U.size();
-    vector<vector<T>> U_sigma(pow(dimension, 2), vector<T>(pow(dimension, 2)));
-    int offset = 0;
+    int dimensionSq = pow(dimension, 2);
+    vector<vector<int>> U_sigma(dimensionSq, vector<int>(dimensionSq));
+
+    int k = 0;
+    int index_sigma = 0;
+    for (int offset = 0; offset < dimensionSq - dimension; offset += dimension)
+    {
+        // Get the matrix of ones at position k
+        vector<vector<int>> one_matrix = get_matrix_of_ones(k, U);
+        // Loop over the matrix of ones
+        for (int one_matrix_index = 0; one_matrix_index < dimension; one_matrix_index++)
+        {
+            // Pad with zeros the vector of one
+            vector<int> temp_fill = pad_zero(offset, one_matrix[one_matrix_index]);
+            // Store vector in U_sigma at position index_sigma
+            U_sigma[index_sigma] = temp_fill;
+        }
+
+        k++;
+    }
 
     return U_sigma;
 }
@@ -272,7 +313,6 @@ int main()
 
     int dimension1 = 10;
     vector<vector<double>> pod_matrix1_set1(dimension1, vector<double>(dimension1));
-    vector<vector<double>> pod_matrix2_set1(dimension1, vector<double>(dimension1));
 
     // Fill input matrices
     double filler = 0.0;
@@ -282,15 +322,26 @@ int main()
         for (int j = 0; j < dimension1; j++)
         {
             pod_matrix1_set1[i][j] = filler;
-            pod_matrix2_set1[i][j] = static_cast<double>((j % 2) + 1);
             filler++;
         }
     }
     print_partial_matrix(pod_matrix1_set1);
 
-    vector<vector<int>> U_0 = get_matrix_of_ones(2, pod_matrix1_set1);
+    // vector<vector<int>> U_0 = get_matrix_of_ones(2, pod_matrix1_set1);
 
-    print_full_matrix(U_0);
+    // print_full_matrix(U_0);
 
+    vector<vector<int>> U_sigma = get_U_sigma(pod_matrix1_set1);
+    print_partial_matrix(U_sigma, 10);
+
+    vector<int> pad = pad_zero(20, pod_matrix1_set1[0]);
+
+    cout << "\t[";
+    for (int i = 0; i < pad.size(); i++)
+    {
+        cout << pad[i] << ", ";
+    }
+    cout << endl;
+    // print_partial_matrix(U_sigma);
     return 0;
 }
