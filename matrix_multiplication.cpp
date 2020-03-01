@@ -304,14 +304,14 @@ vector<vector<int>> get_U_sigma(vector<vector<T>> U)
     {
         // Get the matrix of ones at position k
         vector<vector<int>> one_matrix = get_matrix_of_ones(k, U);
-        print_full_matrix(one_matrix);
+        // print_full_matrix(one_matrix);
         // Loop over the matrix of ones
         for (int one_matrix_index = 0; one_matrix_index < dimension; one_matrix_index++)
         {
             // Pad with zeros the vector of one
             vector<int> temp_fill = pad_zero(offset, one_matrix[one_matrix_index]);
             // Store vector in U_sigma at position index_sigma
-            print_full_vector(temp_fill);
+            // print_full_vector(temp_fill);
             U_sigma[sigma_row] = temp_fill;
             sigma_row++;
         }
@@ -336,14 +336,14 @@ vector<vector<int>> get_U_theta(vector<vector<T>> U)
     {
         // Get the matrix of ones at position i
         vector<vector<int>> one_matrix = get_matrix_of_ones(i, U);
-        print_full_matrix(one_matrix);
+        // print_full_matrix(one_matrix);
 
         int offset = 0;
         // Loop over the matrix of ones and store in U_theta the rows of the matrix of ones with the offset
         for (int j = 0; j < dimension; j++)
         {
             vector<int> temp_fill = pad_zero(offset, one_matrix[j]);
-            print_full_vector(temp_fill);
+            // print_full_vector(temp_fill);
 
             offset += dimension;
             U_theta[theta_row] = temp_fill;
@@ -358,7 +358,14 @@ vector<vector<int>> get_U_theta(vector<vector<T>> U)
 template <typename T>
 vector<vector<int>> get_V_k(vector<vector<T>> U, int k)
 {
+
     int dimension = U.size();
+    if (k < 1 || k >= dimension)
+    {
+        cerr << "Invalid K for matrix V_k: " << to_string(k) << ". Choose k to be between 1 and " << to_string(dimension) << endl;
+        exit(1);
+    }
+
     int dimensionSq = pow(dimension, 2);
     vector<vector<int>> V_k(dimensionSq, vector<int>(dimensionSq));
 
@@ -367,20 +374,66 @@ vector<vector<int>> get_V_k(vector<vector<T>> U, int k)
     {
         // Get the matrix of ones at position k
         vector<vector<int>> one_matrix = get_matrix_of_ones(k, U);
-        print_full_matrix(one_matrix);
+        // print_full_matrix(one_matrix);
         // Loop over the matrix of ones
         for (int one_matrix_index = 0; one_matrix_index < dimension; one_matrix_index++)
         {
             // Pad with zeros the vector of one
             vector<int> temp_fill = pad_zero(offset, one_matrix[one_matrix_index]);
-            // Store vector in U_sigma at position index_sigma
-            print_full_vector(temp_fill);
+            // Store vector in V_k at position V_row
+            // print_full_vector(temp_fill);
             V_k[V_row] = temp_fill;
             V_row++;
         }
     }
 
     return V_k;
+}
+
+// W_k
+template <typename T>
+vector<vector<int>> get_W_k(vector<vector<T>> U, int k)
+{
+
+    int dimension = U.size();
+    if (k < 1 || k >= dimension)
+    {
+        cerr << "Invalid K for matrix V_k: " << to_string(k) << ". Choose k to be between 1 and " << to_string(dimension) << endl;
+        exit(1);
+    }
+
+    int dimensionSq = pow(dimension, 2);
+    vector<vector<int>> W_k(dimensionSq, vector<int>(dimensionSq));
+
+    int W_row = 0;
+    // Get matrix of ones at position 0
+    vector<vector<int>> one_matrix = get_matrix_of_ones(0, U);
+    int offset = k * dimension;
+
+    // Divide the W matrix into several blocks of size dxd and store matrix of ones in them with offsets
+    for (int i = 0; i < dimension; i++)
+    {
+        // Loop over the matrix of ones
+        for (int one_matrix_index = 0; one_matrix_index < dimension; one_matrix_index++)
+        {
+            // Pad with zeros the vector of one
+            vector<int> temp_fill = pad_zero(offset, one_matrix[one_matrix_index]);
+            // Store vector in W_k at position W_row
+            // print_full_vector(temp_fill);
+            W_k[W_row] = temp_fill;
+            W_row++;
+        }
+        if (offset + dimension == dimensionSq)
+        {
+            offset = 0;
+        }
+        else
+        {
+            offset += dimension;
+        }
+    }
+
+    return W_k;
 }
 
 int main()
@@ -400,7 +453,8 @@ int main()
             filler++;
         }
     }
-    print_partial_matrix(pod_matrix1_set1);
+    cout << "\nInput Matrix:" << endl;
+    print_full_matrix(pod_matrix1_set1);
 
     // vector<vector<int>> U_0 = get_matrix_of_ones(2, pod_matrix1_set1);
 
@@ -408,13 +462,20 @@ int main()
 
     vector<vector<int>> U_sigma = get_U_sigma(pod_matrix1_set1);
     // print_partial_matrix(U_sigma);
+    cout << "\nU_sigma:" << endl;
     print_full_matrix(U_sigma);
 
     vector<vector<int>> U_theta = get_U_theta(pod_matrix1_set1);
+    cout << "\nU_theta:" << endl;
     print_full_matrix(U_theta);
 
     vector<vector<int>> V_1 = get_V_k(pod_matrix1_set1, 1);
+    cout << "\nV_1:" << endl;
     print_full_matrix(V_1);
+
+    vector<vector<int>> W_1 = get_W_k(pod_matrix1_set1, 1);
+    cout << "\nW_1:" << endl;
+    print_full_matrix(W_1);
 
     return 0;
 }
