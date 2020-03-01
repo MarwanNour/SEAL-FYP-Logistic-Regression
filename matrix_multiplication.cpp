@@ -210,7 +210,7 @@ Ciphertext Linear_Transform_Plain(Ciphertext ct, vector<Plaintext> U_diagonals, 
     return ct_prime;
 }
 
-Ciphertext Matrix_Multiplication(Ciphertext ctA, Ciphertext ctB, int dimension, vector<Plaintext> U_sigma_diagonals, vector<Plaintext> U_tau_diagonals, vector<vector<Plaintext>> V_diagonals, vector<vector<Plaintext>> W_diagonals, GaloisKeys gal_keys, EncryptionParameters params)
+Ciphertext CC_Matrix_Multiplication(Ciphertext ctA, Ciphertext ctB, int dimension, vector<Plaintext> U_sigma_diagonals, vector<Plaintext> U_tau_diagonals, vector<vector<Plaintext>> V_diagonals, vector<vector<Plaintext>> W_diagonals, GaloisKeys gal_keys, EncryptionParameters params)
 {
 
     auto context = SEALContext::Create(params);
@@ -434,6 +434,114 @@ vector<vector<int>> get_W_k(vector<vector<T>> U, int k)
     }
 
     return W_k;
+}
+
+void Matrix_Multiplication(size_t poly_modulus_degree, int dimension)
+{
+
+    // Handle Rotation Error First
+    if (dimension > poly_modulus_degree / 4)
+    {
+        cerr << "Dimension is too large. Choose a dimension less than " << poly_modulus_degree / 4 << endl;
+        exit(1);
+    }
+
+    EncryptionParameters params(scheme_type::CKKS);
+    params.set_poly_modulus_degree(poly_modulus_degree);
+    cout << "MAX BIT COUNT: " << CoeffModulus::MaxBitCount(poly_modulus_degree) << endl;
+    params.set_coeff_modulus(CoeffModulus::Create(poly_modulus_degree, {60, 40, 40, 60}));
+    auto context = SEALContext::Create(params);
+
+    // Generate keys, encryptor, decryptor and evaluator
+    KeyGenerator keygen(context);
+    PublicKey pk = keygen.public_key();
+    SecretKey sk = keygen.secret_key();
+    GaloisKeys gal_keys = keygen.galois_keys();
+
+    Encryptor encryptor(context, pk);
+    Evaluator evaluator(context);
+    Decryptor decryptor(context, sk);
+
+    // Create CKKS encoder
+    CKKSEncoder ckks_encoder(context);
+
+    // Create Scale
+    double scale = pow(2.0, 40);
+
+    vector<vector<double>> pod_matrix1_set1(dimension, vector<double>(dimension));
+    vector<vector<double>> pod_matrix2_set1(dimension, vector<double>(dimension));
+
+    // Fill input matrices
+    double r = ((double)rand() / (RAND_MAX));
+
+    // Matrix 1
+    for (int i = 0; i < dimension; i++)
+    {
+        for (int j = 0; j < dimension; j++)
+        {
+            pod_matrix1_set1[i][j] = r;
+            r = ((double)rand() / (RAND_MAX));
+        }
+    }
+
+    cout << "Matrix 1:" << endl;
+    print_partial_matrix(pod_matrix1_set1);
+
+    // Matrix 2
+    for (int i = 0; i < dimension; i++)
+    {
+        for (int j = 0; j < dimension; j++)
+        {
+            pod_matrix2_set1[i][j] = r;
+            r = ((double)rand() / (RAND_MAX));
+        }
+    }
+
+    cout << "Matrix 2:" << endl;
+    print_partial_matrix(pod_matrix2_set1);
+
+    int dimensionSq = pow(dimension, 2);
+
+    // Get U_sigma for first matrix
+    vector<vector<int>> U_sigma = get_U_sigma(pod_matrix1_set1);
+
+    // Get U_theta for second matrix
+    vector<vector<int>> U_theta = get_U_sigma(pod_matrix1_set1);
+
+    // Get V_k (3D matrix)
+    vector<vector<vector<int>>> V_k(dimension - 1, vector<vector<int>>(dimensionSq, vector<int>(dimensionSq)));
+
+    for (int i = 1; i < dimension; i++)
+    {
+        V_k[i - 1] = get_V_k(pod_matrix1_set1, i);
+    }
+
+    // Get W_k (3D matrix)
+    vector<vector<vector<int>>> W_k(dimension - 1, vector<vector<int>>(dimensionSq, vector<int>(dimensionSq)));
+
+    for (int i = 1; i < dimension; i++)
+    {
+        W_k[i - 1] = get_W_k(pod_matrix1_set1, i);
+    }
+
+    // Get Diagonals for U_sigma
+    vector<vector<int>> U_sigma_diagonals(dimensionSq, vector<int>(dimensionSq));
+
+    for (int i = 0; i < dimensionSq; i++)
+    {
+        U_sigma_diagonals[i] = get_diagonal(i, U_sigma);
+    }
+
+    // Get Diagonals for U_theta
+    vector<vector<int>> U_theta_diagonals(dimensionSq, vector<int>(dimensionSq));
+
+    for (int i = 0; i < dimensionSq; i++)
+    {
+        U_theta_diagonals[i] = get_diagonal(i, U_theta);
+    }
+
+    // Get Diagonals for V_k
+    // Get Diagonals for W_k
 }
 
 int main()
