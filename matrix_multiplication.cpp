@@ -354,6 +354,35 @@ vector<vector<int>> get_U_theta(vector<vector<T>> U)
     return U_theta;
 }
 
+// V_k
+template <typename T>
+vector<vector<int>> get_V_k(vector<vector<T>> U, int k)
+{
+    int dimension = U.size();
+    int dimensionSq = pow(dimension, 2);
+    vector<vector<int>> V_k(dimensionSq, vector<int>(dimensionSq));
+
+    int V_row = 0;
+    for (int offset = 0; offset < dimensionSq; offset += dimension)
+    {
+        // Get the matrix of ones at position k
+        vector<vector<int>> one_matrix = get_matrix_of_ones(k, U);
+        print_full_matrix(one_matrix);
+        // Loop over the matrix of ones
+        for (int one_matrix_index = 0; one_matrix_index < dimension; one_matrix_index++)
+        {
+            // Pad with zeros the vector of one
+            vector<int> temp_fill = pad_zero(offset, one_matrix[one_matrix_index]);
+            // Store vector in U_sigma at position index_sigma
+            print_full_vector(temp_fill);
+            V_k[V_row] = temp_fill;
+            V_row++;
+        }
+    }
+
+    return V_k;
+}
+
 int main()
 {
 
@@ -383,5 +412,9 @@ int main()
 
     vector<vector<int>> U_theta = get_U_theta(pod_matrix1_set1);
     print_full_matrix(U_theta);
+
+    vector<vector<int>> V_1 = get_V_k(pod_matrix1_set1, 1);
+    print_full_matrix(V_1);
+
     return 0;
 }
