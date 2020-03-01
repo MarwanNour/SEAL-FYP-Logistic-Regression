@@ -322,6 +322,38 @@ vector<vector<int>> get_U_sigma(vector<vector<T>> U)
     return U_sigma;
 }
 
+// U_sigma
+template <typename T>
+vector<vector<int>> get_U_theta(vector<vector<T>> U)
+{
+    int dimension = U.size();
+    int dimensionSq = pow(dimension, 2);
+    vector<vector<int>> U_theta(dimensionSq, vector<int>(dimensionSq));
+
+    int theta_row = 0;
+    // Divide the matrix into blocks of size = dimension
+    for (int i = 0; i < dimension; i++)
+    {
+        // Get the matrix of ones at position i
+        vector<vector<int>> one_matrix = get_matrix_of_ones(i, U);
+        print_full_matrix(one_matrix);
+
+        int offset = 0;
+        // Loop over the matrix of ones and store in U_theta the rows of the matrix of ones with the offset
+        for (int j = 0; j < dimension; j++)
+        {
+            vector<int> temp_fill = pad_zero(offset, one_matrix[j]);
+            print_full_vector(temp_fill);
+
+            offset += dimension;
+            U_theta[theta_row] = temp_fill;
+            theta_row++;
+        }
+    }
+
+    return U_theta;
+}
+
 int main()
 {
 
@@ -349,5 +381,7 @@ int main()
     // print_partial_matrix(U_sigma);
     print_full_matrix(U_sigma);
 
+    vector<vector<int>> U_theta = get_U_theta(pod_matrix1_set1);
+    print_full_matrix(U_theta);
     return 0;
 }
