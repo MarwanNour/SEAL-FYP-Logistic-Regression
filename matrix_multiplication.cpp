@@ -197,69 +197,6 @@ vector<vector<double>> get_matrix_of_ones(int position, vector<vector<T>> U)
     return diagonal_of_ones;
 }
 
-Ciphertext Linear_Transform_Plain(Ciphertext ct, vector<Plaintext> U_diagonals, GaloisKeys gal_keys, EncryptionParameters params)
-{
-    auto context = SEALContext::Create(params);
-    Evaluator evaluator(context);
-
-    // Fill ct with duplicate
-    Ciphertext ct_rot;
-    evaluator.rotate_vector(ct, -U_diagonals.size(), gal_keys, ct_rot);
-    // cout << "U_diagonals.size() = " << U_diagonals.size() << endl;
-    Ciphertext ct_new;
-    evaluator.add(ct, ct_rot, ct_new);
-
-    vector<Ciphertext> ct_result(U_diagonals.size());
-    evaluator.multiply_plain(ct_new, U_diagonals[0], ct_result[0]);
-
-    for (int l = 1; l < U_diagonals.size(); l++)
-    {
-        Ciphertext temp_rot;
-        evaluator.rotate_vector(ct_new, l, gal_keys, temp_rot);
-        evaluator.multiply_plain(temp_rot, U_diagonals[l], ct_result[l]);
-    }
-    Ciphertext ct_prime;
-    evaluator.add_many(ct_result, ct_prime);
-
-    return ct_prime;
-}
-
-Ciphertext CC_Matrix_Multiplication(Ciphertext ctA, Ciphertext ctB, int dimension, vector<Plaintext> U_sigma_diagonals, vector<Plaintext> U_tau_diagonals, vector<vector<Plaintext>> V_diagonals, vector<vector<Plaintext>> W_diagonals, GaloisKeys gal_keys, EncryptionParameters params)
-{
-
-    auto context = SEALContext::Create(params);
-    Evaluator evaluator(context);
-
-    vector<Ciphertext> ctA_result(dimension);
-    vector<Ciphertext> ctB_result(dimension);
-
-    // Step 1-1
-    ctA_result[0] = Linear_Transform_Plain(ctA, U_sigma_diagonals, gal_keys, params);
-
-    // Step 1-2
-    ctB_result[0] = Linear_Transform_Plain(ctB, U_sigma_diagonals, gal_keys, params);
-
-    // Step 2
-    for (int k = 1; k < dimension; k++)
-    {
-        ctA_result[k] = Linear_Transform_Plain(ctA_result[0], V_diagonals[k], gal_keys, params);
-        ctB_result[k] = Linear_Transform_Plain(ctB_result[0], W_diagonals[k], gal_keys, params);
-    }
-
-    // Step 3
-    Ciphertext ctAB;
-    evaluator.multiply(ctA_result[0], ctB_result[0], ctAB);
-
-    for (int k = 1; k < dimension; k++)
-    {
-        Ciphertext temp_mul;
-        evaluator.multiply(ctA_result[k], ctB_result[k], temp_mul);
-        evaluator.add_inplace(ctAB, temp_mul);
-    }
-
-    return ctAB;
-}
-
 // Encodes Ciphertext Matrix into a single vector (Row ordering of a matix)
 Ciphertext C_Matrix_Encode(vector<Ciphertext> matrix, GaloisKeys gal_keys, EncryptionParameters params)
 {
@@ -448,6 +385,69 @@ vector<vector<double>> get_W_k(vector<vector<T>> U, int k)
     }
 
     return W_k;
+}
+
+Ciphertext Linear_Transform_Plain(Ciphertext ct, vector<Plaintext> U_diagonals, GaloisKeys gal_keys, EncryptionParameters params)
+{
+    auto context = SEALContext::Create(params);
+    Evaluator evaluator(context);
+
+    // Fill ct with duplicate
+    Ciphertext ct_rot;
+    evaluator.rotate_vector(ct, -U_diagonals.size(), gal_keys, ct_rot);
+    // cout << "U_diagonals.size() = " << U_diagonals.size() << endl;
+    Ciphertext ct_new;
+    evaluator.add(ct, ct_rot, ct_new);
+
+    vector<Ciphertext> ct_result(U_diagonals.size());
+    evaluator.multiply_plain(ct_new, U_diagonals[0], ct_result[0]);
+
+    for (int l = 1; l < U_diagonals.size(); l++)
+    {
+        Ciphertext temp_rot;
+        evaluator.rotate_vector(ct_new, l, gal_keys, temp_rot);
+        evaluator.multiply_plain(temp_rot, U_diagonals[l], ct_result[l]);
+    }
+    Ciphertext ct_prime;
+    evaluator.add_many(ct_result, ct_prime);
+
+    return ct_prime;
+}
+
+Ciphertext CC_Matrix_Multiplication(Ciphertext ctA, Ciphertext ctB, int dimension, vector<Plaintext> U_sigma_diagonals, vector<Plaintext> U_tau_diagonals, vector<vector<Plaintext>> V_diagonals, vector<vector<Plaintext>> W_diagonals, GaloisKeys gal_keys, EncryptionParameters params)
+{
+
+    auto context = SEALContext::Create(params);
+    Evaluator evaluator(context);
+
+    vector<Ciphertext> ctA_result(dimension);
+    vector<Ciphertext> ctB_result(dimension);
+
+    // Step 1-1
+    ctA_result[0] = Linear_Transform_Plain(ctA, U_sigma_diagonals, gal_keys, params);
+
+    // Step 1-2
+    ctB_result[0] = Linear_Transform_Plain(ctB, U_sigma_diagonals, gal_keys, params);
+
+    // Step 2
+    for (int k = 1; k < dimension; k++)
+    {
+        ctA_result[k] = Linear_Transform_Plain(ctA_result[0], V_diagonals[k], gal_keys, params);
+        ctB_result[k] = Linear_Transform_Plain(ctB_result[0], W_diagonals[k], gal_keys, params);
+    }
+
+    // Step 3
+    Ciphertext ctAB;
+    evaluator.multiply(ctA_result[0], ctB_result[0], ctAB);
+
+    for (int k = 1; k < dimension; k++)
+    {
+        Ciphertext temp_mul;
+        evaluator.multiply(ctA_result[k], ctB_result[k], temp_mul);
+        evaluator.add_inplace(ctAB, temp_mul);
+    }
+
+    return ctAB;
 }
 
 void Matrix_Multiplication(size_t poly_modulus_degree, int dimension)
@@ -664,18 +664,48 @@ void Matrix_Multiplication(size_t poly_modulus_degree, int dimension)
     Ciphertext cipher_encoded_matrix2_set1 = C_Matrix_Encode(cipher_matrix2_set1, gal_keys, params);
     cout << "Done" << endl;
 
-
     // Test Matrix Encoding
     Plaintext test_matrix_encoding;
     decryptor.decrypt(cipher_encoded_matrix1_set1, test_matrix_encoding);
     vector<double> test_matrix_encoding_result(dimensionSq);
     ckks_encoder.decode(test_matrix_encoding, test_matrix_encoding_result);
 
-    print_full_vector(test_matrix_encoding_result);
+    cout << "[";
+    for (int i = 0; i < dimensionSq - 1; i++)
+    {
+        cout << test_matrix_encoding_result[i] << ", ";
+    }
+    cout << test_matrix_encoding_result[dimensionSq - 1] << "]" << endl;
 
+    // Test Matrix Multiplication
+    vector<Ciphertext> ctA_result(dimension);
+    vector<Ciphertext> ctB_result(dimension);
+    // Step 1-1
+    ctA_result[0] = Linear_Transform_Plain(cipher_encoded_matrix1_set1, U_sigma_diagonals_plain, gal_keys, params);
 
+    // Step 1-2
+    ctB_result[0] = Linear_Transform_Plain(cipher_encoded_matrix2_set1, U_sigma_diagonals_plain, gal_keys, params);
+    /*
+    // Step 2
+    for (int k = 1; k < dimension; k++)
+    {
+        ctA_result[k] = Linear_Transform_Plain(ctA_result[0], V_diagonals[k], gal_keys, params);
+        ctB_result[k] = Linear_Transform_Plain(ctB_result[0], W_diagonals[k], gal_keys, params);
+    }
 
-/*
+    // Step 3
+    Ciphertext ctAB;
+    evaluator.multiply(ctA_result[0], ctB_result[0], ctAB);
+
+    for (int k = 1; k < dimension; k++)
+    {
+        Ciphertext temp_mul;
+        evaluator.multiply(ctA_result[k], ctB_result[k], temp_mul);
+        evaluator.add_inplace(ctAB, temp_mul);
+    }
+    */
+    /*
+
     // --------------- MATRIX MULTIPLICATION ----------------
     cout << "\nMatrix Multiplication...";
     cout << "test " << endl;
