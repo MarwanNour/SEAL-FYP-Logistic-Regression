@@ -500,7 +500,7 @@ void Matrix_Multiplication(size_t poly_modulus_degree, int dimension)
     }
 
     cout << "Matrix 1:" << endl;
-    print_partial_matrix(pod_matrix1_set1);
+    print_full_matrix(pod_matrix1_set1, 0);
 
     filler = 0;
     // Matrix 2
@@ -515,7 +515,7 @@ void Matrix_Multiplication(size_t poly_modulus_degree, int dimension)
     }
 
     cout << "Matrix 2:" << endl;
-    print_partial_matrix(pod_matrix2_set1);
+    print_full_matrix(pod_matrix2_set1, 0);
 
     int dimensionSq = pow(dimension, 2);
 
@@ -551,6 +551,8 @@ void Matrix_Multiplication(size_t poly_modulus_degree, int dimension)
 
     // Get Diagonals for U_sigma
     vector<vector<double>> U_sigma_diagonals = get_all_diagonals(U_sigma);
+    cout << "U_sigma Diagonal Matrix:" << endl;
+    print_full_matrix(U_sigma_diagonals, 0);
 
     // Get Diagonals for U_tau
     vector<vector<double>> U_tau_diagonals = get_all_diagonals(U_tau);
