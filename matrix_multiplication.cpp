@@ -407,13 +407,13 @@ Ciphertext Linear_Transform_Plain(Ciphertext ct, vector<Plaintext> U_diagonals, 
         Ciphertext temp_rot;
         evaluator.rotate_vector(ct_new, l, gal_keys, temp_rot);
         evaluator.multiply_plain(temp_rot, U_diagonals[l], ct_result[l]);
-        cout << "ct_result[" << to_string(l) << "] isTransparent = " << ct_result[l].is_transparent() << endl;
+        // cout << "ct_result[" << to_string(l) << "] isTransparent = " << ct_result[l].is_transparent() << endl;
         // sleep(3);
         // ERROR HERE at iteration sqrt(size) when the vectors are full of 0s
     }
 
     // sleep(3);
-    cout << "Post Loop" << endl;
+    // cout << "Post Loop" << endl;
 
     Ciphertext ct_prime;
     evaluator.add_many(ct_result, ct_prime);
@@ -442,19 +442,39 @@ Ciphertext CC_Matrix_Multiplication(Ciphertext ctA, Ciphertext ctB, int dimensio
 
     for (int k = 1; k < dimension; k++)
     {
-        cout << "Linear Transf at k = " << k << endl;
-        ctA_result[k] = Linear_Transform_Plain(ctA_result[0], V_diagonals[k], gal_keys, params);
-        ctB_result[k] = Linear_Transform_Plain(ctB_result[0], W_diagonals[k], gal_keys, params);
+        cout << "Linear Transf at k = " << k;
+        ctA_result[k] = Linear_Transform_Plain(ctA_result[0], V_diagonals[k - 1], gal_keys, params);
+        ctB_result[k] = Linear_Transform_Plain(ctB_result[0], W_diagonals[k - 1], gal_keys, params);
+        cout << "..... Done" << endl;
+    }
+
+    // Test scale
+    for (int i = 0; i < dimension; i++)
+    {
+        cout << "CTA scale at i = " << i << ":\t" << log2(ctA_result[i].scale()) << endl;
+        cout << "CTB scale at i = " << i << ":\t" << log2(ctB_result[i].scale()) << endl;
     }
 
     // Step 3
     cout << "----------Step 3----------- " << endl;
+    // Test Rescale
+    for (int i = 0; i < dimension; i++)
+    {
+        ctA_result[i].scale() = pow(2, 60);
+        ctB_result[i].scale() = pow(2, 60);
+    }
 
     Ciphertext ctAB;
-    evaluator.multiply(ctA_result[0], ctB_result[0], ctAB);
+    // Test Rescale
+    ctAB.scale() = pow(2, 60);
+    
+    evaluator.multiply(ctA_result[0], ctB_result[0], ctAB); //  ERROR HERE
+
+    cout << "TEST" << endl;
 
     for (int k = 1; k < dimension; k++)
     {
+        cout << "Iteration k = " << k << endl;
         Ciphertext temp_mul;
         evaluator.multiply(ctA_result[k], ctB_result[k], temp_mul);
         evaluator.add_inplace(ctAB, temp_mul);
@@ -737,26 +757,26 @@ void Matrix_Multiplication(size_t poly_modulus_degree, int dimension)
     }
     cout << test_matrix_encoding_result[dimensionSq - 1] << "]" << endl;
 
-    // Test U_sigma diag
-    cout << "TEST U_SIGMA DIAG:" << endl;
-    vector<vector<double>> test_u_sigma_diag(dimensionSq, vector<double>(dimensionSq));
-    for (int i = 0; i < dimensionSq; i++)
-    {
-        ckks_encoder.decode(U_sigma_diagonals_plain[i], test_u_sigma_diag[i]);
-    }
-    cout << "U_sigma diag size = " << test_u_sigma_diag.size() << "x" << test_u_sigma_diag[0].size();
+    // // Test U_sigma diag
+    // cout << "TEST U_SIGMA DIAG:" << endl;
+    // vector<vector<double>> test_u_sigma_diag(dimensionSq, vector<double>(dimensionSq));
+    // for (int i = 0; i < dimensionSq; i++)
+    // {
+    //     ckks_encoder.decode(U_sigma_diagonals_plain[i], test_u_sigma_diag[i]);
+    // }
+    // cout << "U_sigma diag size = " << test_u_sigma_diag.size() << "x" << test_u_sigma_diag[0].size();
 
-    print_partial_matrix(test_u_sigma_diag);
+    // print_partial_matrix(test_u_sigma_diag);
 
     // Test Matrix Multiplication
-    vector<Ciphertext> ctA_result(dimension);
-    vector<Ciphertext> ctB_result(dimension);
-    // Step 1-1
-    cout << "ctA SIZE = " << cipher_encoded_matrix1_set1.size() << endl;
-    cout << "ctA SCALE = " << log2(cipher_encoded_matrix1_set1.scale()) << " bits" << endl;
-    cout << "ctA isTransparent = " << cipher_encoded_matrix1_set1.is_transparent() << endl;
+    // vector<Ciphertext> ctA_result(dimension);
+    // vector<Ciphertext> ctB_result(dimension);
+    // // Step 1-1
+    // cout << "ctA SIZE = " << cipher_encoded_matrix1_set1.size() << endl;
+    // cout << "ctA SCALE = " << log2(cipher_encoded_matrix1_set1.scale()) << " bits" << endl;
+    // cout << "ctA isTransparent = " << cipher_encoded_matrix1_set1.is_transparent() << endl;
 
-    cout << "U_sigma diag SIZE = " << U_sigma_diagonals_plain.size() << endl;
+    // cout << "U_sigma diag SIZE = " << U_sigma_diagonals_plain.size() << endl;
     /*
     ctA_result[0] = Linear_Transform_Plain(cipher_encoded_matrix1_set1, U_sigma_diagonals_plain, gal_keys, params);
 
@@ -812,7 +832,7 @@ void Matrix_Multiplication(size_t poly_modulus_degree, int dimension)
     ckks_encoder.decode(pt_result, result_matrix);
     cout << "Done" << endl;
 
-    print_full_vector(result_matrix);
+    print_partial_vector(result_matrix, result_matrix.size());
 }
 
 int main()
