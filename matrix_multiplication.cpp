@@ -558,7 +558,7 @@ void Matrix_Multiplication(size_t poly_modulus_degree, int dimension)
     print_full_matrix(U_sigma, 0);
 
     // Get U_tau for second matrix
-    vector<vector<double>> U_tau = get_U_sigma(pod_matrix1_set1);
+    vector<vector<double>> U_tau = get_U_tau(pod_matrix1_set1);
     cout << "\nU_tau:" << endl;
     print_full_matrix(U_tau, 0);
 
