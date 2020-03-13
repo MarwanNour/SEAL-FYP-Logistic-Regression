@@ -437,12 +437,26 @@ Ciphertext CC_Matrix_Multiplication(Ciphertext ctA, Ciphertext ctB, int dimensio
     // Step 1-2
     ctB_result[0] = Linear_Transform_Plain(ctB, U_sigma_diagonals, gal_keys, params);
 
+    // Test scale
+    cout << "\nSCALE TEST -----------:" << endl;
+    for (int i = 0; i < dimension; i++)
+    {
+        cout << "CTA scale at i = " << i << ":\t" << log2(ctA_result[i].scale()) << endl;
+        cout << "CTB scale at i = " << i << ":\t" << log2(ctB_result[i].scale()) << endl;
+    }
+
     // Step 2
     cout << "----------Step 2----------- " << endl;
 
     for (int k = 1; k < dimension; k++)
     {
         cout << "Linear Transf at k = " << k;
+        // for (int i = 0; i < pow(dimension, 2); i++)
+        // {
+        //     evaluator.mod_switch_to_next_inplace(V_diagonals[k - 1][i]);
+        //     evaluator.mod_switch_to_next_inplace(W_diagonals[k - 1][i]);
+        // }
+        cout << "Mod switched" << endl;
         ctA_result[k] = Linear_Transform_Plain(ctA_result[0], V_diagonals[k - 1], gal_keys, params);
         ctB_result[k] = Linear_Transform_Plain(ctB_result[0], W_diagonals[k - 1], gal_keys, params);
         cout << "..... Done" << endl;
@@ -454,23 +468,74 @@ Ciphertext CC_Matrix_Multiplication(Ciphertext ctA, Ciphertext ctB, int dimensio
         cout << "CTA scale at i = " << i << ":\t" << log2(ctA_result[i].scale()) << endl;
         cout << "CTB scale at i = " << i << ":\t" << log2(ctB_result[i].scale()) << endl;
     }
+    // Test Chain
+    cout << "\nCHAIN TEST -----------:" << endl;
+    for (int i = 0; i < dimension; i++)
+    {
+        cout << "chain index A at i = " << i << ":\t" << context->get_context_data(ctA_result[i].parms_id())->chain_index() << endl;
+        cout << "chain index B at i = " << i << ":\t" << context->get_context_data(ctB_result[i].parms_id())->chain_index() << endl;
+    }
+
+    cout << "U_sigma_diagonals[0].coeff_count()  = " << U_sigma_diagonals[0].coeff_count() << endl;
+    cout << "U_sigma_diagonals[0].significant_coeff_count()  = " << U_sigma_diagonals[0].significant_coeff_count() << endl;
+    cout << "U_sigma_diagonals[0].pool()  = " << U_sigma_diagonals[0].pool() << endl;
+    cout << "context data total coeff modulus bit count = " << context->get_context_data(U_sigma_diagonals[0].parms_id())->total_coeff_modulus_bit_count() << endl;
 
     // Step 3
     cout << "----------Step 3----------- " << endl;
+
     // Test Rescale
-    for (int i = 0; i < dimension; i++)
+    for (int i = 1; i < dimension; i++)
     {
-        ctA_result[i].scale() = pow(2, 60);
-        ctB_result[i].scale() = pow(2, 60);
+        evaluator.rescale_to_next_inplace(ctA_result[i]);
+        evaluator.rescale_to_next_inplace(ctB_result[i]);
     }
 
     Ciphertext ctAB;
-    // Test Rescale
-    ctAB.scale() = pow(2, 60);
-    
-    evaluator.multiply(ctA_result[0], ctB_result[0], ctAB); //  ERROR HERE
+    // Test scale
+    for (int i = 0; i < dimension; i++)
+    {
+        cout << "CTA scale at i = " << i << ":\t" << log2(ctA_result[i].scale()) << endl;
+        cout << "CTB scale at i = " << i << ":\t" << log2(ctB_result[i].scale()) << endl;
+    }
+
+    cout << "Exact scale" << endl;
+    ios old_fmt(nullptr);
+    old_fmt.copyfmt(cout);
+    cout << fixed << setprecision(10);
+    for (int i = 0; i < dimension; i++)
+    {
+        cout << "\t Exact scale in ctA at i = " << i << ":\t" << ctA_result[i].scale() << endl;
+        cout << "\t Exact scale in ctB at i = " << i << ":\t" << ctB_result[i].scale() << endl;
+    }
+    cout << endl;
+    cout.copyfmt(old_fmt);
+
+    // Test Chain
+    cout << "\nCHAIN TEST -----------:" << endl;
+    for (int i = 0; i < dimension; i++)
+    {
+        cout << "chain index A at i = " << i << ":\t" << context->get_context_data(ctA_result[i].parms_id())->chain_index() << endl;
+        cout << "chain index B at i = " << i << ":\t" << context->get_context_data(ctB_result[i].parms_id())->chain_index() << endl;
+    }
+
+    evaluator.multiply(ctA_result[0], ctB_result[0], ctAB);
 
     cout << "TEST" << endl;
+    cout << "CTAB scale :\t" << log2(ctAB.scale()) << endl;
+    cout << "CTAB chain index :\t" << context->get_context_data(ctAB.parms_id())->chain_index() << endl;
+
+    // Mod switch CTAB
+    cout << "MOD SWITCH CTAB:" << endl;
+    evaluator.mod_switch_to_next_inplace(ctAB);
+    cout << "CTAB chain index :\t" << context->get_context_data(ctAB.parms_id())->chain_index() << endl;
+
+    // Manual scale set
+    for (int i = 1; i < dimension; i++)
+    {
+        ctA_result[i].scale() = pow(2, 80);
+        ctB_result[i].scale() = pow(2, 80);
+    }
 
     for (int k = 1; k < dimension; k++)
     {
@@ -496,7 +561,7 @@ void Matrix_Multiplication(size_t poly_modulus_degree, int dimension)
     EncryptionParameters params(scheme_type::CKKS);
     params.set_poly_modulus_degree(poly_modulus_degree);
     cout << "MAX BIT COUNT: " << CoeffModulus::MaxBitCount(poly_modulus_degree) << endl;
-    params.set_coeff_modulus(CoeffModulus::Create(poly_modulus_degree, {60, 40, 40, 60}));
+    params.set_coeff_modulus(CoeffModulus::Create(poly_modulus_degree, {60, 40, 40, 40, 40, 60}));
     auto context = SEALContext::Create(params);
 
     // Generate keys, encryptor, decryptor and evaluator
@@ -832,7 +897,16 @@ void Matrix_Multiplication(size_t poly_modulus_degree, int dimension)
     ckks_encoder.decode(pt_result, result_matrix);
     cout << "Done" << endl;
 
-    print_partial_vector(result_matrix, result_matrix.size());
+    // print_partial_vector(result_matrix, result_matrix.size());
+    cout << "Resulting matrix: ";
+    for (int i = 0; i < dimensionSq; i++)
+    {
+        if(i % 4 == 0){
+            cout << "\n\t";
+        }
+        cout << result_matrix[i] << ", ";
+    }
+    cout << endl;
 }
 
 int main()
@@ -878,7 +952,7 @@ int main()
     print_full_matrix(W_1);
 */
 
-    Matrix_Multiplication(8192, 4);
+    Matrix_Multiplication(8192 * 2, 4);
 
     return 0;
 }
