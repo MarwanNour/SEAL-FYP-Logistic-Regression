@@ -522,6 +522,26 @@ void Matrix_Multiplication(size_t poly_modulus_degree, int dimension)
     // Create Scale
     double scale = pow(2.0, 40);
 
+    // Set output script
+    string script = "matrix_mult_plot_p" + to_string(poly_modulus_degree) + "_d" + to_string(dimension) + ".py";
+    ofstream outscript(script);
+
+    // Handle script error
+    if (!outscript)
+    {
+        cerr << "Couldn't open file: " << script << endl;
+        exit(1);
+    }
+
+    // Write to Script
+    outscript << "import matplotlib.pyplot as plt" << endl;
+    outscript << "labels = 'Encode', 'Encrypt', 'M. Encode', 'Computation', 'Decode', 'Decrypt'" << endl;
+    outscript << "colors = ['gold', 'green', 'lightskyblue', 'white', 'red', 'violet']" << endl;
+    outscript << "sizes = [";
+
+    cout << "Dimension : " << dimension << endl
+         << endl;
+
     vector<vector<double>> pod_matrix1_set1(dimension, vector<double>(dimension));
     vector<vector<double>> pod_matrix2_set1(dimension, vector<double>(dimension));
 
@@ -660,115 +680,114 @@ void Matrix_Multiplication(size_t poly_modulus_degree, int dimension)
 
     // --------------- ENCODING ----------------
     // Encode U_sigma diagonals
+    // Encode U_tau diagonals
     vector<Plaintext> U_sigma_diagonals_plain(dimensionSq);
-    cout << "\nEncoding U_sigma_diagonals...";
+    vector<Plaintext> U_tau_diagonals_plain(dimensionSq);
+    vector<vector<Plaintext>> V_k_diagonals_plain(dimension - 1, vector<Plaintext>(dimensionSq));
+    vector<vector<Plaintext>> W_k_diagonals_plain(dimension - 1, vector<Plaintext>(dimensionSq));
+    vector<Plaintext> plain_matrix1_set1(dimension);
+    vector<Plaintext> plain_matrix2_set1(dimension);
+
+    // cout << "\nEncoding U_sigma_diagonals...Encoding U_tau_diagonals...";
+    cout << "\nENCODING...." << endl;
+    auto start_encode = chrono::high_resolution_clock::now();
     for (int i = 0; i < dimensionSq; i++)
     {
         ckks_encoder.encode(U_sigma_diagonals[i], scale, U_sigma_diagonals_plain[i]);
-    }
-    cout << "Done" << endl;
-
-    // Encode U_tau diagonals
-    vector<Plaintext> U_tau_diagonals_plain(dimensionSq);
-    cout << "\nEncoding U_tau_diagonals...";
-    for (int i = 0; i < dimensionSq; i++)
-    {
         ckks_encoder.encode(U_tau_diagonals[i], scale, U_tau_diagonals_plain[i]);
     }
-    cout << "Done" << endl;
+    // cout << "Done" << endl;
 
     // Encode V_k diagonals
-    vector<vector<Plaintext>> V_k_diagonals_plain(dimension - 1, vector<Plaintext>(dimensionSq));
-    cout << "\nEncoding V_K_diagonals...";
+    // Encode W_k diagonals
+    // cout << "\nEncoding V_K_diagonals...Encoding W_k_diagonals...";
     for (int i = 1; i < dimension; i++)
     {
         for (int j = 0; j < dimensionSq; j++)
         {
             ckks_encoder.encode(V_k_diagonals[i - 1][j], scale, V_k_diagonals_plain[i - 1][j]);
-        }
-    }
-    cout << "Done" << endl;
-
-    // Encode W_k
-    vector<vector<Plaintext>> W_k_diagonals_plain(dimension - 1, vector<Plaintext>(dimensionSq));
-    cout << "\nEncoding W_k_diagonals...";
-    for (int i = 1; i < dimension; i++)
-    {
-        for (int j = 0; j < dimensionSq; j++)
-        {
             ckks_encoder.encode(W_k_diagonals[i - 1][j], scale, W_k_diagonals_plain[i - 1][j]);
         }
     }
-    cout << "Done" << endl;
+    // cout << "Done" << endl;
 
     // Encode Matrices
     // Encode Matrix 1
-    vector<Plaintext> plain_matrix1_set1(dimension);
-    cout << "\nEncoding Matrix 1...";
+    // cout << "\nEncoding Matrix 1...Encoding Matrix 2...";
     for (int i = 0; i < dimension; i++)
     {
         ckks_encoder.encode(pod_matrix1_set1[i], scale, plain_matrix1_set1[i]);
-    }
-    cout << "Done" << endl;
-
-    // Encode Matrix 2
-    vector<Plaintext> plain_matrix2_set1(dimension);
-    cout << "\nEncoding Matrix 2...";
-    for (int i = 0; i < dimension; i++)
-    {
         ckks_encoder.encode(pod_matrix2_set1[i], scale, plain_matrix2_set1[i]);
     }
-    cout << "Done" << endl;
+    // cout << "Done" << endl;
+    auto stop_encode = chrono::high_resolution_clock::now();
+    cout << "Encoding is Complete" << endl;
+    auto duration_encode = chrono::duration_cast<chrono::microseconds>(stop_encode - start_encode);
+    cout << "Encode Duration:\t" << duration_encode.count() << endl;
+    outscript << duration_encode.count() << ", ";
 
+    // Encode Matrix 2
     // --------------- ENCRYPTING ----------------
     // Encrypt Matrix 1
     vector<Ciphertext> cipher_matrix1_set1(dimension);
-    cout << "\nEncrypting Matrix 1...";
-
+    vector<Ciphertext> cipher_matrix2_set1(dimension);
+    // cout << "\nEncrypting Matrix 1...Encrypting Matrix 2...";
+    cout << "\nENCRYPTING...." << endl;
+    auto start_encrypt = chrono::high_resolution_clock::now();
     for (int i = 0; i < dimension; i++)
     {
         encryptor.encrypt(plain_matrix1_set1[i], cipher_matrix1_set1[i]);
-    }
-    cout << "Done" << endl;
-
-    // Encrypt Matrix 2
-    vector<Ciphertext> cipher_matrix2_set1(dimension);
-    cout << "\nEncrypting Matrix 2...";
-    for (int i = 0; i < dimension; i++)
-    {
         encryptor.encrypt(plain_matrix2_set1[i], cipher_matrix2_set1[i]);
     }
-    cout << "Done" << endl;
+    auto stop_encrypt = chrono::high_resolution_clock::now();
+    cout << "Encrypting is Complete" << endl;
+    auto duration_encrypt = chrono::duration_cast<chrono::microseconds>(stop_encrypt - start_encrypt);
+    cout << "Encrypt Duration:\t" << duration_encrypt.count() << endl;
+    outscript << duration_encrypt.count() << ", ";
+
+    // cout << "Done" << endl;
 
     // --------------- MATRIX ENCODING ----------------
     // Matrix Encode Matrix 1
-    cout << "\nMatrix Encoding Matrix 1...";
+    cout << "\nMatrix Encoding-----" << endl;
+    auto start_matrix_encoding = chrono::high_resolution_clock::now();
     Ciphertext cipher_encoded_matrix1_set1 = C_Matrix_Encode(cipher_matrix1_set1, gal_keys, params);
-    cout << "Done" << endl;
-
-    // Matrix Encode Matrix 2
-    cout << "\nMatrix Encoding Matrix 2...";
     Ciphertext cipher_encoded_matrix2_set1 = C_Matrix_Encode(cipher_matrix2_set1, gal_keys, params);
-    cout << "Done" << endl;
+    auto stop_matrix_encoding = chrono::high_resolution_clock::now();
+    cout << "Matrix Encoding is Complete" << endl;
+    auto duration_matrix_encoding = chrono::duration_cast<chrono::microseconds>(stop_matrix_encoding - start_matrix_encoding);
+    cout << "Matrix Encoding Duration:\t" << duration_matrix_encoding.count() << endl;
+    outscript << duration_matrix_encoding.count() << ", ";
 
     // --------------- MATRIX MULTIPLICATION ----------------
-    cout << "\nMatrix Multiplication..." << endl; 
+    cout << "\nMatrix Multiplication..." << endl;
+    auto start_matrix_mult = chrono::high_resolution_clock::now();
     Ciphertext ct_result = CC_Matrix_Multiplication(cipher_encoded_matrix1_set1, cipher_encoded_matrix2_set1, dimension, U_sigma_diagonals_plain, U_tau_diagonals_plain, V_k_diagonals_plain, W_k_diagonals_plain, gal_keys, params);
-    cout << "Done" << endl;
+    auto stop_matrix_mutl = chrono::high_resolution_clock::now();
+    auto duration_matrix_mult = chrono::duration_cast<chrono::microseconds>(stop_matrix_mutl - start_matrix_mult);
+    cout << "Matrix Mult Duration:\t" << duration_matrix_mult.count() << endl;
+    outscript << duration_matrix_mult.count() << ", ";
 
     // --------------- DECRYPT ----------------
     Plaintext pt_result;
     cout << "\nResult Decrypt...";
+    auto start_result_decrypt = chrono::high_resolution_clock::now();
     decryptor.decrypt(ct_result, pt_result);
-    cout << "Done" << endl;
+    auto stop_result_decrypt = chrono::high_resolution_clock::now();
+    auto duration_result_decrypt = chrono::duration_cast<chrono::microseconds>(stop_result_decrypt - start_result_decrypt);
+    cout << "Result Decrypt Duration:\t" << duration_result_decrypt.count() << endl;
+    outscript << duration_result_decrypt.count() << ", ";
 
     // --------------- DECODE ----------------
     vector<double> result_matrix;
     cout << "\nResult Decode...";
+    auto start_result_decode = chrono::high_resolution_clock::now();
     ckks_encoder.decode(pt_result, result_matrix);
-    cout << "Done" << endl;
+    auto stop_result_decode = chrono::high_resolution_clock::now();
+    auto duration_result_decode = chrono::duration_cast<chrono::microseconds>(stop_result_decode - start_result_decode);
+    cout << "Result Decode Duration:\t" << duration_result_decode.count() << endl;
+    outscript << duration_result_decode.count() << ", ";
 
-    // print_partial_vector(result_matrix, result_matrix.size());
     cout << "Resulting matrix: ";
     for (int i = 0; i < dimensionSq; i++)
     {
@@ -783,6 +802,16 @@ void Matrix_Multiplication(size_t poly_modulus_degree, int dimension)
     cout << "Expected Matrix: " << endl;
     vector<vector<double>> expected_mat = test_matrix_mult(pod_matrix1_set1, pod_matrix2_set1, dimension);
     print_full_matrix(expected_mat, 5);
+
+    outscript << "]" << endl;
+    outscript << "plt.pie(sizes, colors=colors, autopct='%.1f')" << endl;
+    outscript << "plt.title(\"Matrix Multiplication Test p" << to_string(poly_modulus_degree) << " d" << to_string(dimension) << "\")" << endl;
+    outscript << "plt.legend(labels)" << endl;
+    outscript << "plt.tight_layout()" << endl;
+    outscript << "plt.axis('equal')" << endl;
+    outscript << "plt.show()" << endl;
+
+    outscript.close();
 }
 
 int main()
