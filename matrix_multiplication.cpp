@@ -287,19 +287,26 @@ vector<vector<double>> get_U_tau(vector<vector<T>> U)
     for (int i = 0; i < dimension; i++)
     {
         // Get the matrix of ones at position i
-        vector<vector<double>> one_matrix = get_matrix_of_ones(i, U);
+        vector<vector<double>> one_matrix = get_matrix_of_ones(0, U);
         // print_full_matrix(one_matrix);
-
-        int offset = 0;
         // Loop over the matrix of ones and store in U_tau the rows of the matrix of ones with the offset
+        int offset = i * dimension;
+
         for (int j = 0; j < dimension; j++)
         {
             vector<double> temp_fill = pad_zero(offset, one_matrix[j]);
             // print_full_vector(temp_fill);
-
-            offset += dimension;
             U_tau[tau_row] = temp_fill;
             tau_row++;
+            // Update offset
+            if (offset + dimension == dimensionSq)
+            {
+                offset = 0;
+            }
+            else
+            {
+                offset += dimension;
+            }
         }
     }
 
@@ -435,8 +442,9 @@ Ciphertext CC_Matrix_Multiplication(Ciphertext ctA, Ciphertext ctB, int dimensio
     ctA_result[0] = Linear_Transform_Plain(ctA, U_sigma_diagonals, gal_keys, params);
 
     // Step 1-2
-    ctB_result[0] = Linear_Transform_Plain(ctB, U_sigma_diagonals, gal_keys, params);
+    ctB_result[0] = Linear_Transform_Plain(ctB, U_tau_diagonals, gal_keys, params);
 
+/*
     // Test scale
     cout << "\nSCALE TEST -----------:" << endl;
     for (int i = 0; i < dimension; i++)
@@ -444,24 +452,19 @@ Ciphertext CC_Matrix_Multiplication(Ciphertext ctA, Ciphertext ctB, int dimensio
         cout << "CTA scale at i = " << i << ":\t" << log2(ctA_result[i].scale()) << endl;
         cout << "CTB scale at i = " << i << ":\t" << log2(ctB_result[i].scale()) << endl;
     }
-
+*/
     // Step 2
     cout << "----------Step 2----------- " << endl;
 
     for (int k = 1; k < dimension; k++)
     {
         cout << "Linear Transf at k = " << k;
-        // for (int i = 0; i < pow(dimension, 2); i++)
-        // {
-        //     evaluator.mod_switch_to_next_inplace(V_diagonals[k - 1][i]);
-        //     evaluator.mod_switch_to_next_inplace(W_diagonals[k - 1][i]);
-        // }
-        cout << "Mod switched" << endl;
         ctA_result[k] = Linear_Transform_Plain(ctA_result[0], V_diagonals[k - 1], gal_keys, params);
         ctB_result[k] = Linear_Transform_Plain(ctB_result[0], W_diagonals[k - 1], gal_keys, params);
         cout << "..... Done" << endl;
     }
 
+/*
     // Test scale
     for (int i = 0; i < dimension; i++)
     {
@@ -476,22 +479,20 @@ Ciphertext CC_Matrix_Multiplication(Ciphertext ctA, Ciphertext ctB, int dimensio
         cout << "chain index B at i = " << i << ":\t" << context->get_context_data(ctB_result[i].parms_id())->chain_index() << endl;
     }
 
-    cout << "U_sigma_diagonals[0].coeff_count()  = " << U_sigma_diagonals[0].coeff_count() << endl;
-    cout << "U_sigma_diagonals[0].significant_coeff_count()  = " << U_sigma_diagonals[0].significant_coeff_count() << endl;
-    cout << "U_sigma_diagonals[0].pool()  = " << U_sigma_diagonals[0].pool() << endl;
     cout << "context data total coeff modulus bit count = " << context->get_context_data(U_sigma_diagonals[0].parms_id())->total_coeff_modulus_bit_count() << endl;
-
+*/
     // Step 3
     cout << "----------Step 3----------- " << endl;
 
     // Test Rescale
+    cout << "RESCALE--------" << endl;
     for (int i = 1; i < dimension; i++)
     {
         evaluator.rescale_to_next_inplace(ctA_result[i]);
         evaluator.rescale_to_next_inplace(ctB_result[i]);
     }
 
-    Ciphertext ctAB;
+    /*
     // Test scale
     for (int i = 0; i < dimension; i++)
     {
@@ -518,17 +519,18 @@ Ciphertext CC_Matrix_Multiplication(Ciphertext ctA, Ciphertext ctB, int dimensio
         cout << "chain index A at i = " << i << ":\t" << context->get_context_data(ctA_result[i].parms_id())->chain_index() << endl;
         cout << "chain index B at i = " << i << ":\t" << context->get_context_data(ctB_result[i].parms_id())->chain_index() << endl;
     }
-
+*/
+    Ciphertext ctAB;
     evaluator.multiply(ctA_result[0], ctB_result[0], ctAB);
 
-    cout << "TEST" << endl;
-    cout << "CTAB scale :\t" << log2(ctAB.scale()) << endl;
-    cout << "CTAB chain index :\t" << context->get_context_data(ctAB.parms_id())->chain_index() << endl;
+    // cout << "TEST" << endl;
+    // cout << "CTAB scale :\t" << log2(ctAB.scale()) << endl;
+    // cout << "CTAB chain index :\t" << context->get_context_data(ctAB.parms_id())->chain_index() << endl;
 
     // Mod switch CTAB
-    cout << "MOD SWITCH CTAB:" << endl;
+    // cout << "MOD SWITCH CTAB:" << endl;
     evaluator.mod_switch_to_next_inplace(ctAB);
-    cout << "CTAB chain index :\t" << context->get_context_data(ctAB.parms_id())->chain_index() << endl;
+    // cout << "CTAB chain index :\t" << context->get_context_data(ctAB.parms_id())->chain_index() << endl;
 
     // Manual scale set
     for (int i = 1; i < dimension; i++)
@@ -653,11 +655,12 @@ void Matrix_Multiplication(size_t poly_modulus_degree, int dimension)
     print_full_matrix(U_sigma_diagonals, 0);
 
     // Test ADD EPSILON
+    double epsilon = 0.00000001;
     for (int i = 0; i < dimensionSq; i++)
     {
         for (int j = 0; j < dimensionSq; j++)
         {
-            U_sigma_diagonals[i][j] += 0.0000001;
+            U_sigma_diagonals[i][j] += epsilon;
         }
     }
 
@@ -669,7 +672,7 @@ void Matrix_Multiplication(size_t poly_modulus_degree, int dimension)
     {
         for (int j = 0; j < dimensionSq; j++)
         {
-            U_tau_diagonals[i][j] += 0.0000001;
+            U_tau_diagonals[i][j] += epsilon;
         }
     }
 
@@ -689,7 +692,7 @@ void Matrix_Multiplication(size_t poly_modulus_degree, int dimension)
             for (int k = 0; k < dimensionSq; k++)
             {
 
-                V_k_diagonals[i][j][k] += 0.0000001;
+                V_k_diagonals[i][j][k] += epsilon;
             }
         }
     }
@@ -710,7 +713,7 @@ void Matrix_Multiplication(size_t poly_modulus_degree, int dimension)
             for (int k = 0; k < dimensionSq; k++)
             {
 
-                W_k_diagonals[i][j][k] += 0.0000001;
+                W_k_diagonals[i][j][k] += epsilon;
             }
         }
     }
@@ -808,6 +811,7 @@ void Matrix_Multiplication(size_t poly_modulus_degree, int dimension)
     Ciphertext cipher_encoded_matrix2_set1 = C_Matrix_Encode(cipher_matrix2_set1, gal_keys, params);
     cout << "Done" << endl;
 
+/*
     // Test Matrix Encoding
     Plaintext test_matrix_encoding;
     decryptor.decrypt(cipher_encoded_matrix1_set1, test_matrix_encoding);
@@ -821,64 +825,7 @@ void Matrix_Multiplication(size_t poly_modulus_degree, int dimension)
         cout << test_matrix_encoding_result[i] << ", ";
     }
     cout << test_matrix_encoding_result[dimensionSq - 1] << "]" << endl;
-
-    // // Test U_sigma diag
-    // cout << "TEST U_SIGMA DIAG:" << endl;
-    // vector<vector<double>> test_u_sigma_diag(dimensionSq, vector<double>(dimensionSq));
-    // for (int i = 0; i < dimensionSq; i++)
-    // {
-    //     ckks_encoder.decode(U_sigma_diagonals_plain[i], test_u_sigma_diag[i]);
-    // }
-    // cout << "U_sigma diag size = " << test_u_sigma_diag.size() << "x" << test_u_sigma_diag[0].size();
-
-    // print_partial_matrix(test_u_sigma_diag);
-
-    // Test Matrix Multiplication
-    // vector<Ciphertext> ctA_result(dimension);
-    // vector<Ciphertext> ctB_result(dimension);
-    // // Step 1-1
-    // cout << "ctA SIZE = " << cipher_encoded_matrix1_set1.size() << endl;
-    // cout << "ctA SCALE = " << log2(cipher_encoded_matrix1_set1.scale()) << " bits" << endl;
-    // cout << "ctA isTransparent = " << cipher_encoded_matrix1_set1.is_transparent() << endl;
-
-    // cout << "U_sigma diag SIZE = " << U_sigma_diagonals_plain.size() << endl;
-    /*
-    ctA_result[0] = Linear_Transform_Plain(cipher_encoded_matrix1_set1, U_sigma_diagonals_plain, gal_keys, params);
-
-    Plaintext plain_res;
-    decryptor.decrypt(ctA_result[0], plain_res);
-    vector<double> vec_res;
-    ckks_encoder.decode(plain_res, vec_res);
-
-    cout << "Vector Result: \t[" ;
-    for (int i = 0; i < dimensionSq; i++)
-    {
-        cout << vec_res[i] << ", ";
-    }
-    cout << "]" << endl;
 */
-    // Step 1-2
-    // ctB_result[0] = Linear_Transform_Plain(cipher_encoded_matrix2_set1, U_tau_diagonals_plain, gal_keys, params);
-    /*
-    // Step 2
-    for (int k = 1; k < dimension; k++)
-    {
-        ctA_result[k] = Linear_Transform_Plain(ctA_result[0], V_diagonals[k], gal_keys, params);
-        ctB_result[k] = Linear_Transform_Plain(ctB_result[0], W_diagonals[k], gal_keys, params);
-    }
-
-    // Step 3
-    Ciphertext ctAB;
-    evaluator.multiply(ctA_result[0], ctB_result[0], ctAB);
-
-    for (int k = 1; k < dimension; k++)
-    {
-        Ciphertext temp_mul;
-        evaluator.multiply(ctA_result[k], ctB_result[k], temp_mul);
-        evaluator.add_inplace(ctAB, temp_mul);
-    }
-    */
-
     // --------------- MATRIX MULTIPLICATION ----------------
     cout << "\nMatrix Multiplication...";
     cout << "test " << endl;
@@ -901,56 +848,107 @@ void Matrix_Multiplication(size_t poly_modulus_degree, int dimension)
     cout << "Resulting matrix: ";
     for (int i = 0; i < dimensionSq; i++)
     {
-        if(i % 4 == 0){
+        if (i % 4 == 0)
+        {
             cout << "\n\t";
         }
         cout << result_matrix[i] << ", ";
     }
     cout << endl;
+    
+    /*
+    cout << "------------ TESTING ------------" << endl;
+    vector<Ciphertext> ctA_result(dimension);
+    vector<Ciphertext> ctB_result(dimension);
+
+    cout << "----------Step 1----------- " << endl;
+    // Step 1-1
+    ctA_result[0] = Linear_Transform_Plain(cipher_encoded_matrix1_set1, U_sigma_diagonals_plain, gal_keys, params);
+
+    // Step 1-2
+    ctB_result[0] = Linear_Transform_Plain(cipher_encoded_matrix2_set1, U_tau_diagonals_plain, gal_keys, params);
+
+    // TEST CTA _ RESULT [0]
+    Plaintext cta_0;
+    decryptor.decrypt(ctA_result[0], cta_0);
+    vector<double> cta_0_res;
+    ckks_encoder.decode(cta_0, cta_0_res);
+
+    cout << "Resulting matrix cta[0]: ";
+    for (int i = 0; i < dimensionSq; i++)
+    {
+        if (i % 4 == 0)
+        {
+            cout << "\n\t";
+        }
+        cout << cta_0_res[i] << ", ";
+    }
+    cout << endl;
+
+    // TEST CTB _ RESULT [0]
+    Plaintext ctb_0;
+    decryptor.decrypt(ctB_result[0], ctb_0);
+    vector<double> ctb_0_res;
+    ckks_encoder.decode(ctb_0, ctb_0_res);
+
+    cout << "Resulting matrix ctb[0]: ";
+    for (int i = 0; i < dimensionSq; i++)
+    {
+        if (i % 4 == 0)
+        {
+            cout << "\n\t";
+        }
+        cout << ctb_0_res[i] << ", ";
+    }
+    cout << endl;
+
+    // Step 2
+    cout << "----------Step 2----------- " << endl;
+
+    for (int k = 1; k < dimension; k++)
+    {
+        cout << "Linear Transf at k = " << k;
+        ctA_result[k] = Linear_Transform_Plain(ctA_result[0], V_k_diagonals_plain[k - 1], gal_keys, params);
+        ctB_result[k] = Linear_Transform_Plain(ctB_result[0], W_k_diagonals_plain[k - 1], gal_keys, params);
+        cout << "..... Done" << endl;
+    }
+
+    // Step 3
+    cout << "----------Step 3----------- " << endl;
+
+    // Test Rescale
+    cout << "RESCALE--------" << endl;
+    for (int i = 1; i < dimension; i++)
+    {
+        evaluator.rescale_to_next_inplace(ctA_result[i]);
+        evaluator.rescale_to_next_inplace(ctB_result[i]);
+    }
+
+    Ciphertext ctAB;
+
+    evaluator.multiply(ctA_result[0], ctB_result[0], ctAB);
+
+    evaluator.mod_switch_to_next_inplace(ctAB);
+
+    // Manual scale set
+    for (int i = 1; i < dimension; i++)
+    {
+        ctA_result[i].scale() = pow(2, 80);
+        ctB_result[i].scale() = pow(2, 80);
+    }
+
+    for (int k = 1; k < dimension; k++)
+    {
+        cout << "Iteration k = " << k << endl;
+        Ciphertext temp_mul;
+        evaluator.multiply(ctA_result[k], ctB_result[k], temp_mul);
+        evaluator.add_inplace(ctAB, temp_mul);
+    }
+    */
 }
 
 int main()
 {
-
-    /*
-    int dimension1 = 4;
-    vector<vector<double>> pod_matrix1_set1(dimension1, vector<double>(dimension1));
-
-    // Fill input matrices
-    double filler = 0.0;
-    // Set 1
-    for (int i = 0; i < dimension1; i++)
-    {
-        for (int j = 0; j < dimension1; j++)
-        {
-            pod_matrix1_set1[i][j] = filler;
-            filler++;
-        }
-    }
-    cout << "\nInput Matrix:" << endl;
-    print_full_matrix(pod_matrix1_set1);
-
-    // vector<vector<int>> U_0 = get_matrix_of_ones(2, pod_matrix1_set1);
-
-    // print_full_matrix(U_0);
-
-    vector<vector<int>> U_sigma = get_U_sigma(pod_matrix1_set1);
-    // print_partial_matrix(U_sigma);
-    cout << "\nU_sigma:" << endl;
-    print_full_matrix(U_sigma);
-
-    vector<vector<int>> U_tau = get_U_tau(pod_matrix1_set1);
-    cout << "\nU_tau:" << endl;
-    print_full_matrix(U_tau);
-
-    vector<vector<int>> V_1 = get_V_k(pod_matrix1_set1, 1);
-    cout << "\nV_1:" << endl;
-    print_full_matrix(V_1);
-
-    vector<vector<int>> W_1 = get_W_k(pod_matrix1_set1, 1);
-    cout << "\nW_1:" << endl;
-    print_full_matrix(W_1);
-*/
 
     Matrix_Multiplication(8192 * 2, 4);
 
