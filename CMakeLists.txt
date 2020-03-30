@@ -1,5 +1,9 @@
 cmake_minimum_required(VERSION 3.10)
+
 project(SEALDemo VERSION 1.0)
+
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+
 add_executable(1_bfv 1_bfv.cpp)
 add_executable(2_encoders 2_encoders.cpp)
 add_executable(3_levels 3_levels.cpp)
