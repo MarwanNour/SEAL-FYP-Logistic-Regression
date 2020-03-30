@@ -535,7 +535,7 @@ void Matrix_Multiplication(size_t poly_modulus_degree, int dimension)
 
     // Write to Script
     outscript << "import matplotlib.pyplot as plt" << endl;
-    outscript << "labels = 'Encode', 'Encrypt', 'M. Encode', 'Computation', 'Decode', 'Decrypt'" << endl;
+    outscript << "labels = 'Encode', 'Encrypt', 'M. Encode', 'Computation', 'Decrypt', 'Decode'" << endl;
     outscript << "colors = ['gold', 'green', 'lightskyblue', 'white', 'red', 'violet']" << endl;
     outscript << "sizes = [";
 
@@ -791,7 +791,7 @@ void Matrix_Multiplication(size_t poly_modulus_degree, int dimension)
     cout << "Resulting matrix: ";
     for (int i = 0; i < dimensionSq; i++)
     {
-        if (i % 4 == 0)
+        if (i % dimension == 0)
         {
             cout << "\n\t";
         }
@@ -817,7 +817,7 @@ void Matrix_Multiplication(size_t poly_modulus_degree, int dimension)
 int main()
 {
 
-    Matrix_Multiplication(8192 * 2, 4);
+    Matrix_Multiplication(8192 * 2, 20);
 
     return 0;
 }
