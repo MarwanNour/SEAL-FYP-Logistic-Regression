@@ -533,10 +533,11 @@ Ciphertext CC_Matrix_Multiplication(Ciphertext ctA, Ciphertext ctB, int dimensio
     // cout << "CTAB chain index :\t" << context->get_context_data(ctAB.parms_id())->chain_index() << endl;
 
     // Manual scale set
+    cout << "\nMANUAL SCALE:" << endl;
     for (int i = 1; i < dimension; i++)
     {
-        ctA_result[i].scale() = pow(2, 80);
-        ctB_result[i].scale() = pow(2, 80);
+        ctA_result[i].scale() = pow(2, (int)log2(ctA_result[i].scale()));
+        ctB_result[i].scale() = pow(2, (int)log2(ctB_result[i].scale()));
     }
 
     for (int k = 1; k < dimension; k++)
