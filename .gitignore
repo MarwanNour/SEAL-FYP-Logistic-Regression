@@ -14,6 +14,7 @@ linear_transformation
 linear_transformation2
 matrix_multiplication
 matrix_mult_benchmark
+horner
 *.dat
 *.html
 *.p
