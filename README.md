@@ -37,6 +37,11 @@ The `benchmark.cpp` file consists of performance tests for CKKS with 3 sets of i
 Running `benchmark` (after building the project) will generate a `bench_<your poly modulus degree>.dat` file and a corresponding `script_<your poly modulus degree>.p` file that can be used in GNUPlot. If you have gnuplot installed you can run the script file with `gnuplot "script_<your poly modulus degree>"`. This will generate a `canvas_"<your poly modulus degree>.html"` with a graph of the output.
 The `benchmark2.cpp` is similar to the first benchmark file.
 
+## Polynomial Evaluation
+The file `polynomial.cpp` contains 2 methods to evaluate polynomials using SEAL:
+### Horner's method
+Horner's method for evaluating polynomials uses `D` multiplications and additions where `D` is the degree of the polynomial. Therefore the Modulus chain used must be of length greater than `D+1` because of the rescaling and modulus switching operations required after every multiplication. 
+
 ## About the example files
 All the explanations are based on the comments and code from the SEAL examples. If you need a more detailed explaination, please refer to the original SEAL examples.
 
