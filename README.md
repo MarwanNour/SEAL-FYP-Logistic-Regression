@@ -42,6 +42,11 @@ The file `polynomial.cpp` contains 2 methods to evaluate polynomials using SEAL:
 ### Horner's method
 Horner's method for evaluating polynomials uses `D` multiplications and additions where `D` is the degree of the polynomial. Therefore the Modulus chain used must be of length greater than `D+1` because of the rescaling and modulus switching operations required after every multiplication. 
 
+### Tree Method
+The tree method for evaluating polynomials uses `log(D)` multiplications and additions where `D` is the degree of the polynomial. This functions faster than Horner's method since it requires less operations which also allow us to have a lower `poly_modulus_degree` and smaller Modulus Chain. 
+
+
+
 ## About the example files
 All the explanations are based on the comments and code from the SEAL examples. If you need a more detailed explaination, please refer to the original SEAL examples.
 
