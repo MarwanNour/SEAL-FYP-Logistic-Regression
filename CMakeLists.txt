@@ -18,6 +18,7 @@ add_executable(linear_transformation2 linear_transformation2.cpp)
 add_executable(matrix_multiplication matrix_multiplication.cpp)
 add_executable(matrix_mult_benchmark matrix_mult_benchmark.cpp)
 add_executable(polynomial polynomial.cpp)
+add_executable(logistic_regression logistic_regression.cpp)
 
 find_package(SEAL)
 target_link_libraries(1_bfv SEAL::seal)
