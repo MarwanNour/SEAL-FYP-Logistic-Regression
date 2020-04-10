@@ -6,6 +6,7 @@ bin/*
 *.html
 *.p
 *.py
+*.exe
 .vscode
 !.vscode/settings.json
 !.vscode/tasks.json

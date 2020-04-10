@@ -7,6 +7,7 @@
 
 using namespace std;
 
+// Dot Product
 float vector_dot_product(vector<float> vec_A, vector<float> vec_B)
 {
     if (vec_A.size() != vec_B.size())
@@ -23,6 +24,7 @@ float vector_dot_product(vector<float> vec_A, vector<float> vec_B)
     return result;
 }
 
+// Linear Transformation (or Matrix * Vector)
 vector<float> linear_transformation(vector<vector<float>> input_matrix, vector<float> input_vec)
 {
     vector<float> result_vec(input_vec.size());
@@ -34,15 +36,63 @@ vector<float> linear_transformation(vector<vector<float>> input_matrix, vector<f
     return result_vec;
 }
 
+// Sigmoid
 float sigmoid(float z)
 {
     return 1 / (1 + exp(-z));
 }
 
-float predict(vector<vector<float>> features, vector<float> weights)
+// Predict
+vector<float> predict(vector<vector<float>> features, vector<float> weights)
 {
-    
+	vector<float> lintransf_vec = linear_transformation(features, weights);
+	
+	vector<float> result_sigmoid_vec(features.size());
+	
+	for(int i = 0; i < result_sigmoid_vec.size(); i++) {
+		
+		result_sigmoid_vec[i] = sigmoid(lintransf_vec[i]);
+	}
+	return result_sigmoid_vec;
 }
+
+// Cost Function
+float cost_function(vector<vector<float>> features, vector<float> labels, vector<float> weights)
+{
+	int observations = labels.size();
+	vector<float> predictions = predict(features, weights);
+	
+	vector<float> cost_result_vec(observations);
+	float cost_sum = 0;
+	
+	for(int i = 0; i < observations; i++)
+	{
+		float cost0 = (1-labels[i])*log(1 - predictions[i]);
+		float cost1 = (-labels[i])*log(predictions[i]);
+		
+		cost_result_vec[i] = cost1 - cost0;
+		cost_sum += cost_result_vec[i];
+	}
+	
+	float cost_result = cost_sum / observations;
+	
+	return cost_result;
+}
+
+
+vector<float> update_weights(vector<vector<float>> features, vector<float> labels, vector<float> weights, float learning_rate)
+{
+	vector<float> new_weights;
+	
+	int N = features.size();
+	
+	// Get predictions
+	vector<float> predictions = predict(features, weights);
+
+
+	return new_weights;
+}
+
 
 int main()
 {
