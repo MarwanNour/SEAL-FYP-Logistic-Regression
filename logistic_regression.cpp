@@ -23,17 +23,25 @@ float vector_dot_product(vector<float> vec_A, vector<float> vec_B)
     return result;
 }
 
-float sigmoid(float value)
+vector<float> linear_transformation(vector<vector<float>> input_matrix, vector<float> input_vec)
 {
-    float res = 1 / (1 + exp(-value));
-    return res;
+    vector<float> result_vec(input_vec.size());
+    for (int i = 0; i < input_matrix.size(); i++)
+    {
+        result_vec[i] = vector_dot_product(input_matrix[i], input_vec);
+    }
+
+    return result_vec;
 }
 
-float logisticReg(float x, float b0, float b1)
+float sigmoid(float z)
 {
-    // Y = e^(b0 + b1*X) / (1 + e^(b0 + b1*X))
-    float res = (exp(b0 + (b1 * x))) / (1 + exp(b0 + (b1 * x)));
-    return res;
+    return 1 / (1 + exp(-z));
+}
+
+float predict(vector<vector<float>> features, vector<float> weights)
+{
+    
 }
 
 int main()
@@ -41,17 +49,15 @@ int main()
     float value = 4.5;
     float b0 = -100;
     float b1 = 0.6;
-
     cout << "Sigmoid of " << value << " = " << sigmoid(value) << endl;
     cout << "Logistic Regression:\n\tb0 = " << b0 << "\n\tb1 = " << b1 << endl;
-    cout << "\tResult = " << logisticReg(2.5, b0, b1) << endl;
-    cout << "e1 = " << exp(1) << "\n" << endl;
+    cout << "e1 = " << exp(1) << "\n"
+         << endl;
 
     vector<float> vec_A = {1, 2, 3, 4};
     vector<float> vec_B = {5, 6, 7, 8};
 
     float dotProd = vector_dot_product(vec_A, vec_B);
     cout << "DOT product of A and B: " << dotProd << endl;
-
     return 0;
 }
