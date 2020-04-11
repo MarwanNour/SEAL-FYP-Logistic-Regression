@@ -160,7 +160,7 @@ vector<vector<string>> CSVtoMatrix(string filename)
 
     ifstream data(filename);
     string line;
-
+    int line_count = 0;
     while (getline(data, line))
     {
         stringstream lineStream(line);
@@ -170,7 +170,12 @@ vector<vector<string>> CSVtoMatrix(string filename)
         {
             parsedRow.push_back(cell);
         }
-        result_matrix.push_back(parsedRow);
+        // Skip first line since it has text instead of numbers
+        if (line_count != 0)
+        {
+            result_matrix.push_back(parsedRow);
+        }
+        line_count++;
     }
     return result_matrix;
 }
@@ -207,6 +212,69 @@ int main()
 
     cout << "\n\n--------------------------\n"
          << endl;
+
+    // Read File
+    string filename = "pulsar_stars.csv";
+    vector<vector<string>> s_matrix = CSVtoMatrix(filename);
+    vector<vector<float>> f_matrix = stringToFloatMatrix(s_matrix);
+
+    // Test print first 10 rows
+    for (int i = 0; i < 10; i++)
+    {
+        for (int j = 0; j < f_matrix[0].size(); j++)
+        {
+            cout << f_matrix[i][j] << ",";
+        }
+        cout << endl;
+    }
+    cout << "..........." << endl;
+    // Test print last 10 rows
+    for (int i = f_matrix.size() - 10; i < f_matrix.size(); i++)
+    {
+        for (int j = 0; j < f_matrix[0].size(); j++)
+        {
+            cout << f_matrix[i][j] << ",";
+        }
+        cout << endl;
+    }
+
+    // Size of features is the same as f_matrix but without the last column
+    vector<vector<float>> features(f_matrix.size(), vector<float>(f_matrix[0].size() - 1));
+    vector<float> labels(f_matrix.size());
+
+    // Fill the features matrix and labels vector
+    for (int i = 0; i < f_matrix.size(); i++)
+    {
+        for (int j = 0; j < f_matrix[0].size() - 1; j++)
+        {
+            features[i][j] = f_matrix[i][j];
+        }
+        labels[i] = f_matrix[i][f_matrix[0].size() - 1];
+    }
+
+    // Test print the features and labels
+
+    cout << "\nTesting features\n--------------\n"
+         << endl;
+
+    // Features Print test
+    for (int i = 0; i < 10; i++)
+    {
+        for (int j = 0; j < features[0].size(); j++)
+        {
+            cout << features[i][j] << ", ";
+        }
+        cout << endl;
+    }
+
+    cout << "\nTesting labels\n--------------\n"
+         << endl;
+    // Labels Print
+    for (int i = 0; i < 10; i++)
+    {
+        cout << labels[i] << ", ";
+    }
+    cout << endl;
 
     return 0;
 }
