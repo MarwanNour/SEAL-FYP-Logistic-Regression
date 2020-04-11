@@ -8,6 +8,7 @@ bin/*
 *.py
 *.exe
 *.csv
+*.txt
 .vscode
 !.vscode/settings.json
 !.vscode/tasks.json

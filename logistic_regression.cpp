@@ -15,8 +15,9 @@ float vector_dot_product(vector<float> vec_A, vector<float> vec_B)
     if (vec_A.size() != vec_B.size())
     {
         cerr << "Vector size mismatch" << endl;
-        exit(EXIT_FAILURE);
+        exit(1);
     }
+
     float result = 0;
     for (unsigned int i = 0; i < vec_A.size(); i++)
     {
@@ -29,15 +30,22 @@ float vector_dot_product(vector<float> vec_A, vector<float> vec_B)
 // Matrix Transpose
 vector<vector<float>> transpose_matrix(vector<vector<float>> input_matrix)
 {
-    vector<vector<float>> transposed(input_matrix[0].size(), vector<float>(input_matrix.size()));
+    // cout << "Func ---> " << __func__ << endl;
+    // cout << "Line ---> " << __LINE__ << endl;
 
-    for (int i = 0; i < input_matrix.size(); i++)
+    int rowSize = input_matrix.size();
+    int colSize = input_matrix[0].size();
+    vector<vector<float>> transposed(colSize, vector<float>(rowSize));
+
+    for (int i = 0; i < rowSize; i++)
     {
-        for (int j = 0; j < input_matrix[0].size(); j++)
+        for (int j = 0; j < colSize; j++)
         {
-            transposed[i][j] = input_matrix[j][i];
+            transposed[j][i] = input_matrix[i][j];
         }
     }
+
+    // cout << "Line ---> " << __LINE__ << endl;
 
     return transposed;
 }
@@ -45,11 +53,28 @@ vector<vector<float>> transpose_matrix(vector<vector<float>> input_matrix)
 // Linear Transformation (or Matrix * Vector)
 vector<float> linear_transformation(vector<vector<float>> input_matrix, vector<float> input_vec)
 {
-    vector<float> result_vec(input_vec.size());
+
+    // cout << "Func ---> " << __func__ << endl;
+    // cout << "Line ---> " << __LINE__ << endl;
+
+    int rowSize = input_matrix.size();
+    int colSize = input_matrix[0].size();
+
+    // cout << "rowSize  = " << rowSize << endl;
+    // cout << "colSize  = " << colSize << endl;
+    // cout << "vector size = " << input_vec.size() << endl;
+    if (colSize != input_vec.size())
+    {
+        cerr << "Matrix Vector sizes error" << endl;
+        exit(EXIT_FAILURE);
+    }
+
+    vector<float> result_vec(rowSize);
     for (int i = 0; i < input_matrix.size(); i++)
     {
         result_vec[i] = vector_dot_product(input_matrix[i], input_vec);
     }
+    // cout << "Line ---> " << __LINE__ << endl;
 
     return result_vec;
 }
@@ -63,23 +88,33 @@ float sigmoid(float z)
 // Predict
 vector<float> predict(vector<vector<float>> features, vector<float> weights)
 {
+    // cout << "Func ---> " << __func__ << endl;
+    // cout << "Line ---> " << __LINE__ << endl;
     vector<float> lintransf_vec = linear_transformation(features, weights);
 
     vector<float> result_sigmoid_vec(features.size());
 
     for (int i = 0; i < result_sigmoid_vec.size(); i++)
     {
-
         result_sigmoid_vec[i] = sigmoid(lintransf_vec[i]);
     }
+    // cout << "Line ---> " << __LINE__ << endl;
+
     return result_sigmoid_vec;
 }
 
 // Cost Function
 float cost_function(vector<vector<float>> features, vector<float> labels, vector<float> weights)
 {
+
+    // cout << "Func ---> " << __func__ << endl;
+
     int observations = labels.size();
+    // cout << "Line ---> " << __LINE__ << endl;
+
     vector<float> predictions = predict(features, weights);
+
+    // cout << "Line ---> " << __LINE__ << endl;
 
     vector<float> cost_result_vec(observations);
     float cost_sum = 0;
@@ -94,6 +129,7 @@ float cost_function(vector<vector<float>> features, vector<float> labels, vector
     }
 
     float cost_result = cost_sum / observations;
+    // cout << "Line ---> " << __LINE__ << endl;
 
     return cost_result;
 }
@@ -101,23 +137,35 @@ float cost_function(vector<vector<float>> features, vector<float> labels, vector
 // Gradient Descent (or Update Weights)
 vector<float> update_weights(vector<vector<float>> features, vector<float> labels, vector<float> weights, float learning_rate)
 {
+
+    // cout << "Func ---> " << __func__ << endl;
+    // cout << "Line ---> " << __LINE__ << endl;
+
     vector<float> new_weights(weights.size());
 
     int N = features.size();
 
     // Get predictions
     vector<float> predictions = predict(features, weights);
+    // cout << "Func ---> " << __func__ << endl;
+    // cout << "Line ---> " << __LINE__ << endl;
 
     // Tranpose features matrix
     vector<vector<float>> features_T = transpose_matrix(features);
+    // cout << "Func ---> " << __func__ << endl;
+    // cout << "Line ---> " << __LINE__ << endl;
+
     // Calculate Predictions - Labels vector
     vector<float> pred_labels(labels.size());
     for (int i = 0; i < labels.size(); i++)
     {
         pred_labels[i] = predictions[i] - labels[i];
     }
+
     // Calculate Gradient vector
     vector<float> gradient = linear_transformation(features_T, pred_labels);
+    // cout << "Func ---> " << __func__ << endl;
+    // cout << "Line ---> " << __LINE__ << endl;
 
     for (int i = 0; i < gradient.size(); i++)
     {
@@ -128,6 +176,7 @@ vector<float> update_weights(vector<vector<float>> features, vector<float> label
         // Subtract from weights to minimize cost
         new_weights[i] = weights[i] - gradient[i];
     }
+    // cout << "Line ---> " << __LINE__ << endl;
 
     return new_weights;
 }
@@ -135,20 +184,31 @@ vector<float> update_weights(vector<vector<float>> features, vector<float> label
 // Training
 tuple<vector<float>, vector<float>> train(vector<vector<float>> features, vector<float> labels, vector<float> weights, float learning_rate, int iters)
 {
+
+    // cout << "Func ---> " << __func__ << endl;
     vector<float> new_weights(weights.size());
     vector<float> cost_history(iters);
+    // cout << "Line ---> " << __LINE__ << endl;
+
     for (int i = 0; i < iters; i++)
     {
         // Get new weights
         new_weights = update_weights(features, labels, weights, learning_rate);
         // Get cost
+        // cout << "Line ---> " << __LINE__ << endl;
+
         float cost = cost_function(features, labels, weights);
         cost_history[i] = cost;
 
         // Log Progress
-        if (i % 1000 == 0)
+        if (i % 10 == 0)
         {
             cout << "Iteration:\t" << i << "\t" << cost << endl;
+            cout << "weights: ";
+            for(int i = 0 ; i < weights.size(); i++){
+                cout << weights[i] << ", ";
+            }
+            cout << endl;
         }
     }
     return make_tuple(new_weights, cost_history);
@@ -223,7 +283,7 @@ int main()
     {
         for (int j = 0; j < f_matrix[0].size(); j++)
         {
-            cout << f_matrix[i][j] << ",";
+            cout << f_matrix[i][j] << ", ";
         }
         cout << endl;
     }
@@ -233,31 +293,53 @@ int main()
     {
         for (int j = 0; j < f_matrix[0].size(); j++)
         {
-            cout << f_matrix[i][j] << ",";
+            cout << f_matrix[i][j] << ", ";
         }
         cout << endl;
     }
 
-    // Size of features is the same as f_matrix but without the last column
-    vector<vector<float>> features(f_matrix.size(), vector<float>(f_matrix[0].size() - 1));
-    vector<float> labels(f_matrix.size());
+    // Init features, labels and weights
+    // Init features (rows of f_matrix , cols of f_matrix - 1)
+    int rows = f_matrix.size();
+    cout << "rows  = " << rows << endl;
+    int cols = f_matrix[0].size() - 1;
+    cout << "cols  = " << cols << endl;
+
+    vector<vector<float>> features(rows, vector<float>(cols));
+    // Init labels (rows of f_matrix)
+    vector<float> labels(rows);
+    // Init weight vector with zeros (cols of features)
+    vector<float> weights(cols);
 
     // Fill the features matrix and labels vector
-    for (int i = 0; i < f_matrix.size(); i++)
+    for (int i = 0; i < rows; i++)
     {
-        for (int j = 0; j < f_matrix[0].size() - 1; j++)
+        for (int j = 0; j < cols; j++)
         {
             features[i][j] = f_matrix[i][j];
         }
-        labels[i] = f_matrix[i][f_matrix[0].size() - 1];
+        labels[i] = f_matrix[i][cols];
     }
 
-    // Test print the features and labels
+    // Fill the weights with random numbers (from 0 - 1)
+    for (int i = 0; i < cols; i++)
+    {
+        weights[i] = ((float) rand() / (RAND_MAX));
+        cout << "weights[i] = " << weights[i] << endl;
+    }
 
+
+    // Test print the features and labels
     cout << "\nTesting features\n--------------\n"
          << endl;
 
     // Features Print test
+    cout << "Features row size = " << features.size() << endl;
+    cout << "Features col size = " << features[0].size() << endl;
+
+    cout << "Labels row size = " << labels.size() << endl;
+    cout << "Weights row size = " << weights.size() << endl;
+
     for (int i = 0; i < 10; i++)
     {
         for (int j = 0; j < features[0].size(); j++)
@@ -267,12 +349,29 @@ int main()
         cout << endl;
     }
 
-    cout << "\nTesting labels\n--------------\n"
+    // cout << "\nTesting labels\n--------------\n"
+    //      << endl;
+
+    // // Labels Print Test
+    // for (int i = 0; i < 10; i++)
+    // {
+    //     cout << labels[i] << ", ";
+    // }
+    // cout << endl;
+
+    // TRAIN
+    cout << "\nTraining--------------\n" << endl;
+    tuple<vector<float>, vector<float>> training_tuple = train(features, labels, weights, 0.1, 100);
+
+    vector<float> new_weights = get<0>(training_tuple);
+    vector<float> cost_history = get<1>(training_tuple);
+
+    // Print weights
+    cout << "\nNEW WEIGHTS\n------------------\n"
          << endl;
-    // Labels Print
-    for (int i = 0; i < 10; i++)
+    for (int i = 0; i < new_weights.size(); i++)
     {
-        cout << labels[i] << ", ";
+        cout << new_weights[i] << ", ";
     }
     cout << endl;
 
