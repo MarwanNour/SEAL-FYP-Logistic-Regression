@@ -4,6 +4,8 @@
 #include <unistd.h>
 #include <cmath>
 #include <vector>
+#include <string.h>
+#include <sstream>
 
 using namespace std;
 
@@ -131,14 +133,14 @@ vector<float> update_weights(vector<vector<float>> features, vector<float> label
 }
 
 // Training
-vector<vector<float>> train(vector<vector<float>> features, vector<float> labels, vector<float> weights, float learning_rate, int iters)
+tuple<vector<float>, vector<float>> train(vector<vector<float>> features, vector<float> labels, vector<float> weights, float learning_rate, int iters)
 {
-    vector<vector<float>> weights_costHist;
+    vector<float> new_weights(weights.size());
     vector<float> cost_history(iters);
     for (int i = 0; i < iters; i++)
     {
         // Get new weights
-        weights = update_weights(features, labels, weights, learning_rate);
+        new_weights = update_weights(features, labels, weights, learning_rate);
         // Get cost
         float cost = cost_function(features, labels, weights);
         cost_history[i] = cost;
@@ -149,8 +151,42 @@ vector<vector<float>> train(vector<vector<float>> features, vector<float> labels
             cout << "Iteration:\t" << i << "\t" << cost << endl;
         }
     }
+    return make_tuple(new_weights, cost_history);
+}
 
-    return weights_costHist;
+vector<vector<string>> CSVtoMatrix(string filename)
+{
+    vector<vector<string>> result_matrix;
+
+    ifstream data(filename);
+    string line;
+
+    while (getline(data, line))
+    {
+        stringstream lineStream(line);
+        string cell;
+        vector<string> parsedRow;
+        while (getline(lineStream, cell, ','))
+        {
+            parsedRow.push_back(cell);
+        }
+        result_matrix.push_back(parsedRow);
+    }
+    return result_matrix;
+}
+
+vector<vector<float>> stringToFloatMatrix(vector<vector<string>> matrix)
+{
+    vector<vector<float>> result(matrix.size(), vector<float>(matrix[0].size()));
+    for (int i = 0; i < matrix.size(); i++)
+    {
+        for (int j = 0; j < matrix[0].size(); j++)
+        {
+            result[i][j] = ::atof(matrix[i][j].c_str());
+        }
+    }
+
+    return result;
 }
 
 int main()
@@ -168,5 +204,9 @@ int main()
 
     float dotProd = vector_dot_product(vec_A, vec_B);
     cout << "DOT product of A and B: " << dotProd << endl;
+
+    cout << "\n\n--------------------------\n"
+         << endl;
+
     return 0;
 }
