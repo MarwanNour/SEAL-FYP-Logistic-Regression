@@ -135,12 +135,12 @@ float cost_function(vector<vector<float>> features, vector<float> labels, vector
         float cost0 = (1.0 - labels[i]) * log(1.0 - predictions[i]);
         float cost1 = (-labels[i]) * log(predictions[i]);
 
-        cout << "cost 0 = " << cost0 << "\t\t";
-        cout << "cost 1 = " << cost1 << "\t\t";
 
         cost_result_vec[i] = cost1 - cost0;
         cost_sum += cost_result_vec[i];
-        cout << "cost sum = " << cost1 << endl;
+        cout << "cost 0 = " << cost0 << "\t\t";
+        cout << "cost 1 = " << cost1 << "\t\t";
+        cout << "cost sum = " << cost_sum << endl;
 
         // // DEBUG
         // if (i == 100)
@@ -321,10 +321,15 @@ vector<vector<float>> standard_scaler(vector<vector<float>> input_matrix)
         vector<float> column(rowSize);
         for (int j = 0; j < rowSize; j++)
         {
-            column[j] = input_matrix[i][j];
+            // cout << input_matrix[j][i] << ", ";
+            column[j] = input_matrix[j][i];
+            // cout << column[j] << ", ";
         }
+
         means_vec[i] = getMean(column);
         stdev_vec[i] = getStandardDev(column, means_vec[i]);
+        // cout << "MEAN at i = " << i << ":\t" << means_vec[i] << endl;
+        // cout << "STDV at i = " << i << ":\t" << stdev_vec[i] << endl;
     }
 
     // second pass: scale
@@ -333,6 +338,7 @@ vector<vector<float>> standard_scaler(vector<vector<float>> input_matrix)
         for (int j = 0; j < colSize; j++)
         {
             result_matrix[i][j] = (input_matrix[i][j] - means_vec[j]) / stdev_vec[j];
+            // cout << "RESULT at i = " << i << ":\t" << result_matrix[i][j] << endl;
         }
     }
 
@@ -459,33 +465,32 @@ int main()
         cout << endl;
     }
 
-    
-    // cout << "\nTesting labels\n--------------\n"
-    //      << endl;
+    cout << "\nTesting labels\n--------------\n"
+         << endl;
 
-    // // Labels Print Test
-    // for (int i = 0; i < 10; i++)
-    // {
-    //     cout << labels[i] << ", ";
-    // }
-    // cout << endl;
+    // Labels Print Test
+    for (int i = 0; i < 10; i++)
+    {
+        cout << labels[i] << ", ";
+    }
+    cout << endl;
 
     // TRAIN
-    // cout << "\nTraining--------------\n"
-    //      << endl;
-    // tuple<vector<float>, vector<float>> training_tuple = train(features, labels, weights, 0.1, 100);
+    cout << "\nTraining--------------\n"
+         << endl;
+    tuple<vector<float>, vector<float>> training_tuple = train(standard_features, labels, weights, 0.1, 100);
 
-    // vector<float> new_weights = get<0>(training_tuple);
-    // vector<float> cost_history = get<1>(training_tuple);
+    vector<float> new_weights = get<0>(training_tuple);
+    vector<float> cost_history = get<1>(training_tuple);
 
-    // // Print weights
-    // cout << "\nNEW WEIGHTS\n------------------\n"
-    //      << endl;
-    // for (int i = 0; i < new_weights.size(); i++)
-    // {
-    //     cout << new_weights[i] << ", ";
-    // }
-    // cout << endl;
+    // Print weights
+    cout << "\nNEW WEIGHTS\n------------------\n"
+         << endl;
+    for (int i = 0; i < new_weights.size(); i++)
+    {
+        cout << new_weights[i] << ", ";
+    }
+    cout << endl;
 
     return 0;
 }
