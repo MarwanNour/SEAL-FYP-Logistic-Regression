@@ -30,8 +30,6 @@ float vector_dot_product(vector<float> vec_A, vector<float> vec_B)
 // Matrix Transpose
 vector<vector<float>> transpose_matrix(vector<vector<float>> input_matrix)
 {
-    // cout << "Func ---> " << __func__ << endl;
-    // cout << "Line ---> " << __LINE__ << endl;
 
     int rowSize = input_matrix.size();
     int colSize = input_matrix[0].size();
@@ -45,8 +43,6 @@ vector<vector<float>> transpose_matrix(vector<vector<float>> input_matrix)
         }
     }
 
-    // cout << "Line ---> " << __LINE__ << endl;
-
     return transposed;
 }
 
@@ -54,15 +50,9 @@ vector<vector<float>> transpose_matrix(vector<vector<float>> input_matrix)
 vector<float> linear_transformation(vector<vector<float>> input_matrix, vector<float> input_vec)
 {
 
-    // cout << "Func ---> " << __func__ << endl;
-    // cout << "Line ---> " << __LINE__ << endl;
-
     int rowSize = input_matrix.size();
     int colSize = input_matrix[0].size();
 
-    // cout << "rowSize  = " << rowSize << endl;
-    // cout << "colSize  = " << colSize << endl;
-    // cout << "vector size = " << input_vec.size() << endl;
     if (colSize != input_vec.size())
     {
         cerr << "Matrix Vector sizes error" << endl;
@@ -74,7 +64,6 @@ vector<float> linear_transformation(vector<vector<float>> input_matrix, vector<f
     {
         result_vec[i] = vector_dot_product(input_matrix[i], input_vec);
     }
-    // cout << "Line ---> " << __LINE__ << endl;
 
     return result_vec;
 }
@@ -88,8 +77,6 @@ float sigmoid(float z)
 // Predict
 vector<float> predict(vector<vector<float>> features, vector<float> weights)
 {
-    // cout << "Func ---> " << __func__ << endl;
-    // cout << "Line ---> " << __LINE__ << endl;
     vector<float> lintransf_vec = linear_transformation(features, weights);
 
     vector<float> result_sigmoid_vec(features.size());
@@ -106,7 +93,6 @@ vector<float> predict(vector<vector<float>> features, vector<float> weights)
         //     exit(0);
         // }
     }
-    // cout << "Line ---> " << __LINE__ << endl;
 
     return result_sigmoid_vec;
 }
@@ -114,33 +100,40 @@ vector<float> predict(vector<vector<float>> features, vector<float> weights)
 // Cost Function
 float cost_function(vector<vector<float>> features, vector<float> labels, vector<float> weights)
 {
-
-    // cout << "Func ---> " << __func__ << endl;
-
     int observations = labels.size();
-    // cout << "Line ---> " << __LINE__ << endl;
 
     vector<float> predictions = predict(features, weights);
-
-    // cout << "Line ---> " << __LINE__ << endl;
 
     vector<float> cost_result_vec(observations);
     float cost_sum = 0;
 
     for (int i = 0; i < observations; i++)
     {
-        cout << "i = " << i << "\t\t";
-        cout << "labels[i] = " << labels[i] << "\t\t";
-        cout << "predictions[i] = " << predictions[i] << "\t\t";
+
+        // Handle Prediction = 1 issue: Epsilon subtraction
+        float epsilon = 0.0001;
+        if (predictions[i] == 1)
+        {
+            predictions[i] -= epsilon;
+        }
+
+        // Calculate Cost 0 and 1
         float cost0 = (1.0 - labels[i]) * log(1.0 - predictions[i]);
         float cost1 = (-labels[i]) * log(predictions[i]);
 
-
         cost_result_vec[i] = cost1 - cost0;
         cost_sum += cost_result_vec[i];
-        cout << "cost 0 = " << cost0 << "\t\t";
-        cout << "cost 1 = " << cost1 << "\t\t";
-        cout << "cost sum = " << cost_sum << endl;
+
+        // Log Progress
+        if (i % 2000 == 0)
+        {
+            cout << "i = " << i << "\t\t";
+            cout << "labels[i] = " << labels[i] << "\t\t";
+            cout << "predictions[i] = " << predictions[i] << "\t\t";
+            cout << "cost 0 = " << cost0 << "\t\t";
+            cout << "cost 1 = " << cost1 << "\t\t";
+            cout << "cost sum = " << cost_sum << endl;
+        }
 
         // // DEBUG
         // if (i == 100)
@@ -150,7 +143,6 @@ float cost_function(vector<vector<float>> features, vector<float> labels, vector
     }
 
     float cost_result = cost_sum / observations;
-    // cout << "Line ---> " << __LINE__ << endl;
 
     return cost_result;
 }
@@ -158,23 +150,15 @@ float cost_function(vector<vector<float>> features, vector<float> labels, vector
 // Gradient Descent (or Update Weights)
 vector<float> update_weights(vector<vector<float>> features, vector<float> labels, vector<float> weights, float learning_rate)
 {
-
-    // cout << "Func ---> " << __func__ << endl;
-    // cout << "Line ---> " << __LINE__ << endl;
-
     vector<float> new_weights(weights.size());
 
     int N = features.size();
 
     // Get predictions
     vector<float> predictions = predict(features, weights);
-    // cout << "Func ---> " << __func__ << endl;
-    // cout << "Line ---> " << __LINE__ << endl;
 
     // Tranpose features matrix
     vector<vector<float>> features_T = transpose_matrix(features);
-    // cout << "Func ---> " << __func__ << endl;
-    // cout << "Line ---> " << __LINE__ << endl;
 
     // Calculate Predictions - Labels vector
     vector<float> pred_labels(labels.size());
@@ -185,8 +169,6 @@ vector<float> update_weights(vector<vector<float>> features, vector<float> label
 
     // Calculate Gradient vector
     vector<float> gradient = linear_transformation(features_T, pred_labels);
-    // cout << "Func ---> " << __func__ << endl;
-    // cout << "Line ---> " << __LINE__ << endl;
 
     for (int i = 0; i < gradient.size(); i++)
     {
@@ -197,7 +179,6 @@ vector<float> update_weights(vector<vector<float>> features, vector<float> label
         // Subtract from weights to minimize cost
         new_weights[i] = weights[i] - gradient[i];
     }
-    // cout << "Line ---> " << __LINE__ << endl;
 
     return new_weights;
 }
@@ -206,33 +187,45 @@ vector<float> update_weights(vector<vector<float>> features, vector<float> label
 tuple<vector<float>, vector<float>> train(vector<vector<float>> features, vector<float> labels, vector<float> weights, float learning_rate, int iters)
 {
 
-    // cout << "Func ---> " << __func__ << endl;
-    vector<float> new_weights(weights.size());
+    int colSize = weights.size();
+    vector<float> new_weights(colSize);
     vector<float> cost_history(iters);
-    // cout << "Line ---> " << __LINE__ << endl;
+
+    // Set temp weights
+    vector<float> temp_weights(colSize);
+    for (int i = 0; i < colSize; i++)
+    {
+        temp_weights[i] = weights[i];
+    }
 
     for (int i = 0; i < iters; i++)
     {
         // Get new weights
-        new_weights = update_weights(features, labels, weights, learning_rate);
-        // Get cost
-        // cout << "Line ---> " << __LINE__ << endl;
+        new_weights = update_weights(features, labels, temp_weights, learning_rate);
 
-        float cost = cost_function(features, labels, weights);
+        // Get cost
+        float cost = cost_function(features, labels, new_weights);
         cost_history[i] = cost;
 
         // Log Progress
-        if (i % 10 == 0)
+        if (i % 100 == 0)
         {
             cout << "Iteration:\t" << i << "\t" << cost << endl;
-            cout << "weights: ";
-            for (int i = 0; i < weights.size(); i++)
+            cout << "Weights: ";
+            for (int i = 0; i < colSize; i++)
             {
-                cout << weights[i] << ", ";
+                cout << new_weights[i] << ", ";
             }
             cout << endl;
         }
+
+        // Set temp weights to new weights
+        for (int j = 0; j < colSize; j++)
+        {
+            temp_weights[j] = new_weights[j];
+        }
     }
+
     return make_tuple(new_weights, cost_history);
 }
 
@@ -347,29 +340,14 @@ vector<vector<float>> standard_scaler(vector<vector<float>> input_matrix)
 
 int main()
 {
-    float value = 2;
-    float b0 = -100;
-    float b1 = 0.6;
-    cout << "Sigmoid of " << value << " = " << sigmoid(value) << endl;
-    cout << "Logistic Regression:\n\tb0 = " << b0 << "\n\tb1 = " << b1 << endl;
-    cout << "e1 = " << exp(1) << "\n"
-         << endl;
-
-    vector<float> vec_A = {1, 2, 3, 4};
-    vector<float> vec_B = {5, 6, 7, 8};
-
-    float dotProd = vector_dot_product(vec_A, vec_B);
-    cout << "DOT product of A and B: " << dotProd << endl;
-
-    cout << "\n\n--------------------------\n"
-         << endl;
-
     // Read File
     string filename = "pulsar_stars.csv";
     vector<vector<string>> s_matrix = CSVtoMatrix(filename);
     vector<vector<float>> f_matrix = stringToFloatMatrix(s_matrix);
 
     // Test print first 10 rows
+    cout << "First 10 rows of CSV file --------\n"
+         << endl;
     for (int i = 0; i < 10; i++)
     {
         for (int j = 0; j < f_matrix[0].size(); j++)
@@ -378,7 +356,8 @@ int main()
         }
         cout << endl;
     }
-    cout << "..........." << endl;
+    cout << "...........\nLast 10 rows of CSV file ----------\n"
+         << endl;
     // Test print last 10 rows
     for (int i = f_matrix.size() - 10; i < f_matrix.size(); i++)
     {
@@ -392,9 +371,9 @@ int main()
     // Init features, labels and weights
     // Init features (rows of f_matrix , cols of f_matrix - 1)
     int rows = f_matrix.size();
-    cout << "rows  = " << rows << endl;
+    cout << "\nNumber of rows  = " << rows << endl;
     int cols = f_matrix[0].size() - 1;
-    cout << "cols  = " << cols << endl;
+    cout << "\nNumber of cols  = " << cols << endl;
 
     vector<vector<float>> features(rows, vector<float>(cols));
     // Init labels (rows of f_matrix)
@@ -412,7 +391,7 @@ int main()
         labels[i] = f_matrix[i][cols];
     }
 
-    // Fill the weights with random numbers (from 0 - 1)
+    // Fill the weights with random numbers (from 1 - 2)
     for (int i = 0; i < cols; i++)
     {
         weights[i] = ((double)rand() / (RAND_MAX)) + 1;
@@ -483,12 +462,34 @@ int main()
     vector<float> new_weights = get<0>(training_tuple);
     vector<float> cost_history = get<1>(training_tuple);
 
-    // Print weights
-    cout << "\nNEW WEIGHTS\n------------------\n"
+    // Print old weights
+    cout << "\nOLD WEIGHTS\n------------------"
+         << endl;
+    for (int i = 0; i < weights.size(); i++)
+    {
+        cout << weights[i] << ", ";
+    }
+    cout << endl;
+
+    // Print mew weights
+    cout << "\nNEW WEIGHTS\n------------------"
          << endl;
     for (int i = 0; i < new_weights.size(); i++)
     {
         cout << new_weights[i] << ", ";
+    }
+    cout << endl;
+
+    // Print Cost history
+    cout << "\nCOST HISTORY\n------------------"
+         << endl;
+    for (int i = 0; i < cost_history.size(); i++)
+    {
+        cout << cost_history[i] << ", ";
+        if (i % 10 == 0 && i > 0)
+        {
+            cout << "\n";
+        }
     }
     cout << endl;
 
