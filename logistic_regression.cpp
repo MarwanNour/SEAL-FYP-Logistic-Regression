@@ -5,7 +5,7 @@
 #include <cmath>
 #include <vector>
 #include <string.h>
-#include <sstream>
+// #include <sstream>
 
 using namespace std;
 
@@ -97,6 +97,14 @@ vector<float> predict(vector<vector<float>> features, vector<float> weights)
     for (int i = 0; i < result_sigmoid_vec.size(); i++)
     {
         result_sigmoid_vec[i] = sigmoid(lintransf_vec[i]);
+
+        // DEBUG
+        // cout << "lintransf_vec[i] = " << lintransf_vec[i] << endl;
+        // cout << "result_sigmoid_vec[i] = " << result_sigmoid_vec[i] << endl;
+        // if (i == 10)
+        // {
+        //     exit(0);
+        // }
     }
     // cout << "Line ---> " << __LINE__ << endl;
 
@@ -121,11 +129,24 @@ float cost_function(vector<vector<float>> features, vector<float> labels, vector
 
     for (int i = 0; i < observations; i++)
     {
-        float cost0 = (1 - labels[i]) * log(1 - predictions[i]);
+        cout << "i = " << i << "\t\t";
+        cout << "labels[i] = " << labels[i] << "\t\t";
+        cout << "predictions[i] = " << predictions[i] << "\t\t";
+        float cost0 = (1.0 - labels[i]) * log(1.0 - predictions[i]);
         float cost1 = (-labels[i]) * log(predictions[i]);
+
+        cout << "cost 0 = " << cost0 << "\t\t";
+        cout << "cost 1 = " << cost1 << "\t\t";
 
         cost_result_vec[i] = cost1 - cost0;
         cost_sum += cost_result_vec[i];
+        cout << "cost sum = " << cost1 << endl;
+
+        // // DEBUG
+        // if (i == 100)
+        // {
+        //     exit(0);
+        // }
     }
 
     float cost_result = cost_sum / observations;
@@ -205,7 +226,8 @@ tuple<vector<float>, vector<float>> train(vector<vector<float>> features, vector
         {
             cout << "Iteration:\t" << i << "\t" << cost << endl;
             cout << "weights: ";
-            for(int i = 0 ; i < weights.size(); i++){
+            for (int i = 0; i < weights.size(); i++)
+            {
                 cout << weights[i] << ", ";
             }
             cout << endl;
@@ -214,6 +236,7 @@ tuple<vector<float>, vector<float>> train(vector<vector<float>> features, vector
     return make_tuple(new_weights, cost_history);
 }
 
+// CSV to string matrix converter
 vector<vector<string>> CSVtoMatrix(string filename)
 {
     vector<vector<string>> result_matrix;
@@ -240,6 +263,7 @@ vector<vector<string>> CSVtoMatrix(string filename)
     return result_matrix;
 }
 
+// String matrix to float matrix converter
 vector<vector<float>> stringToFloatMatrix(vector<vector<string>> matrix)
 {
     vector<vector<float>> result(matrix.size(), vector<float>(matrix[0].size()));
@@ -254,9 +278,70 @@ vector<vector<float>> stringToFloatMatrix(vector<vector<string>> matrix)
     return result;
 }
 
+// Mean calculation
+float getMean(vector<float> input_vec)
+{
+    float mean = 0;
+    for (int i = 0; i < input_vec.size(); i++)
+    {
+        mean += input_vec[i];
+    }
+    mean /= input_vec.size();
+
+    return mean;
+}
+
+// Standard Dev calculation
+float getStandardDev(vector<float> input_vec, float mean)
+{
+    float variance = 0;
+    for (int i = 0; i < input_vec.size(); i++)
+    {
+        variance += pow(input_vec[i] - mean, 2);
+    }
+    variance /= input_vec.size();
+
+    float standard_dev = sqrt(variance);
+    return standard_dev;
+}
+
+// Standard Scaler
+vector<vector<float>> standard_scaler(vector<vector<float>> input_matrix)
+{
+    int rowSize = input_matrix.size();
+    int colSize = input_matrix[0].size();
+    vector<vector<float>> result_matrix(rowSize, vector<float>(colSize));
+
+    // Optimization: Get Means and Standard Devs first then do the scaling
+    // first pass: get means and standard devs
+    vector<float> means_vec(colSize);
+    vector<float> stdev_vec(colSize);
+    for (int i = 0; i < colSize; i++)
+    {
+        vector<float> column(rowSize);
+        for (int j = 0; j < rowSize; j++)
+        {
+            column[j] = input_matrix[i][j];
+        }
+        means_vec[i] = getMean(column);
+        stdev_vec[i] = getStandardDev(column, means_vec[i]);
+    }
+
+    // second pass: scale
+    for (int i = 0; i < rowSize; i++)
+    {
+        for (int j = 0; j < colSize; j++)
+        {
+            result_matrix[i][j] = (input_matrix[i][j] - means_vec[j]) / stdev_vec[j];
+        }
+    }
+
+    return result_matrix;
+}
+
 int main()
 {
-    float value = 4.5;
+    float value = 2;
     float b0 = -100;
     float b1 = 0.6;
     cout << "Sigmoid of " << value << " = " << sigmoid(value) << endl;
@@ -324,10 +409,9 @@ int main()
     // Fill the weights with random numbers (from 0 - 1)
     for (int i = 0; i < cols; i++)
     {
-        weights[i] = ((float) rand() / (RAND_MAX));
+        weights[i] = ((double)rand() / (RAND_MAX)) + 1;
         cout << "weights[i] = " << weights[i] << endl;
     }
-
 
     // Test print the features and labels
     cout << "\nTesting features\n--------------\n"
@@ -349,6 +433,33 @@ int main()
         cout << endl;
     }
 
+    // Standardize the features
+    cout << "\nSTANDARDIZE TEST---------\n"
+         << endl;
+
+    vector<vector<float>> standard_features = standard_scaler(features);
+
+    // Test print first 10 rows
+    for (int i = 0; i < 10; i++)
+    {
+        for (int j = 0; j < cols; j++)
+        {
+            cout << standard_features[i][j] << ", ";
+        }
+        cout << endl;
+    }
+    cout << "..........." << endl;
+    // Test print last 10 rows
+    for (int i = rows - 10; i < rows; i++)
+    {
+        for (int j = 0; j < cols; j++)
+        {
+            cout << standard_features[i][j] << ", ";
+        }
+        cout << endl;
+    }
+
+    
     // cout << "\nTesting labels\n--------------\n"
     //      << endl;
 
@@ -360,20 +471,21 @@ int main()
     // cout << endl;
 
     // TRAIN
-    cout << "\nTraining--------------\n" << endl;
-    tuple<vector<float>, vector<float>> training_tuple = train(features, labels, weights, 0.1, 100);
+    // cout << "\nTraining--------------\n"
+    //      << endl;
+    // tuple<vector<float>, vector<float>> training_tuple = train(features, labels, weights, 0.1, 100);
 
-    vector<float> new_weights = get<0>(training_tuple);
-    vector<float> cost_history = get<1>(training_tuple);
+    // vector<float> new_weights = get<0>(training_tuple);
+    // vector<float> cost_history = get<1>(training_tuple);
 
-    // Print weights
-    cout << "\nNEW WEIGHTS\n------------------\n"
-         << endl;
-    for (int i = 0; i < new_weights.size(); i++)
-    {
-        cout << new_weights[i] << ", ";
-    }
-    cout << endl;
+    // // Print weights
+    // cout << "\nNEW WEIGHTS\n------------------\n"
+    //      << endl;
+    // for (int i = 0; i < new_weights.size(); i++)
+    // {
+    //     cout << new_weights[i] << ", ";
+    // }
+    // cout << endl;
 
     return 0;
 }
