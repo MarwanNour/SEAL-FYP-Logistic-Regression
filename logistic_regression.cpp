@@ -338,6 +338,14 @@ vector<vector<float>> standard_scaler(vector<vector<float>> input_matrix)
     return result_matrix;
 }
 
+float RandomFloat(float a, float b)
+{
+    float random = ((float)rand()) / (float)RAND_MAX;
+    float diff = b - a;
+    float r = random * diff;
+    return a + r;
+}
+
 int main()
 {
     // Read File
@@ -394,7 +402,7 @@ int main()
     // Fill the weights with random numbers (from 1 - 2)
     for (int i = 0; i < cols; i++)
     {
-        weights[i] = ((double)rand() / (RAND_MAX)) + 1;
+        weights[i] = RandomFloat(-2, 2);
         cout << "weights[i] = " << weights[i] << endl;
     }
 
