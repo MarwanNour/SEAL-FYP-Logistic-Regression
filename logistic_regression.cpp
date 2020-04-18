@@ -5,7 +5,6 @@
 #include <cmath>
 #include <vector>
 #include <string.h>
-// #include <sstream>
 
 using namespace std;
 
@@ -338,6 +337,32 @@ vector<vector<float>> standard_scaler(vector<vector<float>> input_matrix)
     return result_matrix;
 }
 
+float accuracy(vector<float> predicted_labels, vector<float> actual_labels)
+{
+    // handle error
+    if (predicted_labels.size() != actual_labels.size())
+    {
+        cerr << "Vector size mismatch" << endl;
+        exit(EXIT_FAILURE);
+    }
+
+    int size = predicted_labels.size();
+    vector<float> diff(size);
+    int nnz = 0;
+    for (int i = 0; i < size; i++)
+    {
+        diff[i] = predicted_labels[i] - actual_labels[i];
+        // count non zero in diff
+        if (diff[i] != 0)
+        {
+            nnz++;
+        }
+    }
+
+    float result = 1.0 - (nnz / size);
+    return result;
+}
+
 float RandomFloat(float a, float b)
 {
     float random = ((float)rand()) / (float)RAND_MAX;
@@ -501,5 +526,8 @@ int main()
     }
     cout << endl;
 
+    // Print Accuracy
+    cout << "\nACCURACY\n-------------------" << endl;
+    
     return 0;
 }
