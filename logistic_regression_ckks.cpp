@@ -261,11 +261,8 @@ Ciphertext Linear_Transform_Cipher(Ciphertext ct, vector<Ciphertext> U_diagonals
 }
 
 // Linear transformation function between ciphertext matrix and plaintext vector
-Ciphertext Linear_Transform_CipherMatrix_PlainVector(vector<Plaintext> pt_rotations, vector<Ciphertext> U_diagonals, GaloisKeys gal_keys, EncryptionParameters params)
+Ciphertext Linear_Transform_CipherMatrix_PlainVector(vector<Plaintext> pt_rotations, vector<Ciphertext> U_diagonals, GaloisKeys gal_keys, Evaluator &evaluator)
 {
-    auto context = SEALContext::Create(params);
-    Evaluator evaluator(context);
-
     vector<Ciphertext> ct_result(pt_rotations.size());
 
     for (int i = 0; i < pt_rotations.size(); i++)
@@ -551,6 +548,24 @@ void tree(int degree, double x)
     // TEST Garbage
 }
 
+template <typename T>
+vector<T> rotate_vec(vector<T> input_vec, int num_rotations)
+{
+    if (num_rotations > input_vec.size())
+    {
+        cerr << "Invalid number of rotations" << endl;
+        exit(EXIT_FAILURE);
+    }
+
+    vector<T> rotated_res(input_vec.size());
+    for (int i = 0; i < input_vec.size(); i++)
+    {
+        rotated_res[i] = input_vec[(i + num_rotations) % (input_vec.size())];
+    }
+
+    return rotated_res;
+}
+
 Ciphertext sigmoid(Ciphertext ct)
 {
     Ciphertext res;
@@ -558,14 +573,35 @@ Ciphertext sigmoid(Ciphertext ct)
     return res;
 }
 
-Ciphertext predict(vector<Ciphertext> features, Plaintext weights)
+Ciphertext predict(vector<Ciphertext> features, Plaintext weights, int num_weights, double scale, Evaluator &evaluator, CKKSEncoder &ckks_encoder, GaloisKeys gal_keys)
 {
-    Ciphertext lintransf_vec;
-    // ---------- linear transformation(vector<Ciphertext> U_diag_ct, Plaintext pt ) ---------------- ?????????
+    // Get rotations of weights
+    vector<Plaintext> weights_rotations(num_weights);
+    weights_rotations[0] = weights;
 
+    vector<double> decoded_weights(num_weights);
+    ckks_encoder.decode(weights, decoded_weights);
 
+    for (int i = 1; i < num_weights; i++)
+    {
+        // rotate
+        vector<double> rotated_vec = rotate_vec(decoded_weights, i);
 
-    return lintransf_vec;
+        // encode
+        Plaintext pt;
+        ckks_encoder.encode(rotated_vec, scale, pt);
+
+        // store
+        weights_rotations[i] = pt;
+    }
+
+    // Linear Transformation
+    Ciphertext lintransf_vec = Linear_Transform_CipherMatrix_PlainVector(weights_rotations, features, gal_keys, evaluator);
+
+    // Sigmoid over result
+    Ciphertext predict_res = sigmoid(lintransf_vec);
+
+    return predict_res;
 }
 
 int main()
