@@ -604,6 +604,48 @@ Ciphertext predict(vector<Ciphertext> features, Plaintext weights, int num_weigh
     return predict_res;
 }
 
+Ciphertext update_weights(vector<Ciphertext> features, Ciphertext labels, Plaintext weights, float learning_rate, int observations, int num_weights, double scale, EncryptionParameters params, Evaluator &evaluator, CKKSEncoder &ckks_encoder, GaloisKeys gal_keys)
+{
+
+    // Get predictions
+    Ciphertext predictions = predict(features, weights, num_weights, scale, evaluator, ckks_encoder, gal_keys);
+
+    // Tranpose features matrix -----------------
+    vector<Ciphertext> features_T;
+
+    // Calculate Predictions - Labels
+    Ciphertext pred_labels;
+    evaluator.sub(predictions, labels, pred_labels);
+
+    // Calculate Gradient vector
+    Ciphertext gradient = Linear_Transform_Cipher(pred_labels, features_T, gal_keys, params);
+
+    // Divide by 1/observations -> multiply by N_pt
+    int N = 1 / observations;
+    Plaintext N_pt;
+    ckks_encoder.encode(N, N_pt);
+    evaluator.multiply_plain_inplace(gradient, N_pt);
+
+    // Multiply by learning rate
+    Plaintext lr_pt;
+    ckks_encoder.encode(learning_rate, lr_pt);
+    evaluator.multiply_plain_inplace(gradient, lr_pt);
+
+    // Subtract from weights
+    Ciphertext new_weights;
+    evaluator.sub_plain(gradient, weights, new_weights);
+    evaluator.negate_inplace(new_weights);
+
+    return new_weights;
+}
+
+Ciphertext train(vector<Ciphertext> features, Ciphertext labels, Plaintext weights, float learning_rate, int iters)
+{
+
+    Ciphertext new_weights;
+
+    return new_weights;
+}
 int main()
 {
 
