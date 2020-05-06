@@ -38,7 +38,7 @@ Running `benchmark` (after building the project) will generate a `bench_<your po
 The `benchmark2.cpp` is similar to the first benchmark file.
 
 ## Polynomial Evaluation
-The file `polynomial.cpp` contains 2 methods to evaluate polynomials using SEAL:
+The file `polynomial.cpp` contains 2 methods to evaluate polynomials using SEAL based on the works of Hao Chen in  https://github.com/haochenuw/algorithms-in-SEAL/ :
 ### Horner's method
 Horner's method for evaluating polynomials uses `D` multiplications and additions where `D` is the degree of the polynomial. Therefore the Modulus chain used must be of length greater than `D+1` because of the rescaling and modulus switching operations required after every multiplication. 
 
@@ -47,7 +47,7 @@ The tree method for evaluating polynomials uses `log(D)` multiplications and add
 
 ## Logistic Regression
 
-The goal of this project is eventually to implement a logistic regression model that could work over encrypted data. The dataset used is `pulsar_stars.csv` simply because it was easy to use: the features are integers and the labels are at the last column 0s and 1s. To use this dataset properly the features matrix has to be standardized, that is why I built a `standard_scaler` function that performs `(value - mean )/ standard_deviation` over the values of the features matrix. I have also provided helper functions for transforming the CSV file into a matrix of floats.
+The goal of this project is eventually to implement a logistic regression model that could work over encrypted data. The dataset used is `pulsar_stars.csv` simply because it was easy to use: the features are integers and the labels are at the last column 0s and 1s. To use this dataset properly the features matrix has to be standardized, that is why I built a `standard_scaler` function that performs `(value - mean )/ standard_deviation` over the values of the features matrix. I have also provided helper functions for transforming the CSV file into a matrix of floats. The code for logistic regression is based on the code and explanation in https://ml-cheatsheet.readthedocs.io/en/latest/logistic_regression.html .
 
 ### Normal LR
 This version of Logistic Regression has the functions:
