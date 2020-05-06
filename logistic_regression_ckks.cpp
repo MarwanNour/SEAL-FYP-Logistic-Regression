@@ -604,7 +604,7 @@ Ciphertext predict(vector<Ciphertext> features, Plaintext weights, int num_weigh
     return predict_res;
 }
 
-Ciphertext update_weights(vector<Ciphertext> features, Ciphertext labels, Plaintext weights, float learning_rate, int observations, int num_weights, double scale, EncryptionParameters params, Evaluator &evaluator, CKKSEncoder &ckks_encoder, GaloisKeys gal_keys)
+Ciphertext update_weights(vector<Ciphertext> features, Ciphertext labels, Plaintext weights, float learning_rate, vector<Plaintext> U_transpose, int observations, int num_weights, double scale, EncryptionParameters params, Evaluator &evaluator, CKKSEncoder &ckks_encoder, GaloisKeys gal_keys)
 {
 
     // Get predictions
@@ -620,7 +620,7 @@ Ciphertext update_weights(vector<Ciphertext> features, Ciphertext labels, Plaint
     // Calculate Gradient vector
     Ciphertext gradient = Linear_Transform_Cipher(pred_labels, features_T, gal_keys, params);
 
-    // Divide by 1/observations -> multiply by N_pt
+    // Divide by N = 1/observations -> multiply by N_pt
     int N = 1 / observations;
     Plaintext N_pt;
     ckks_encoder.encode(N, N_pt);

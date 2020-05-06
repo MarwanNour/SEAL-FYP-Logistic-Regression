@@ -214,11 +214,8 @@ vector<vector<double>> get_matrix_of_ones(int position, vector<vector<T>> U)
 }
 
 // Encodes Ciphertext Matrix into a single vector (Row ordering of a matix)
-Ciphertext C_Matrix_Encode(vector<Ciphertext> matrix, GaloisKeys gal_keys, EncryptionParameters params)
+Ciphertext C_Matrix_Encode(vector<Ciphertext> matrix, GaloisKeys gal_keys, Evaluator &evaluator)
 {
-    auto context = SEALContext::Create(params);
-    Evaluator evaluator(context);
-
     Ciphertext ct_result;
     int dimension = matrix.size();
     vector<Ciphertext> ct_rots(dimension);
@@ -230,6 +227,44 @@ Ciphertext C_Matrix_Encode(vector<Ciphertext> matrix, GaloisKeys gal_keys, Encry
     }
 
     evaluator.add_many(ct_rots, ct_result);
+
+    return ct_result;
+}
+
+// Decodes Ciphertext Matrix into vector of Ciphertexts
+vector<Ciphertext> C_Matrix_Decode(Ciphertext matrix, int dimension, double scale, GaloisKeys gal_keys, CKKSEncoder &ckks_encoder, Evaluator &evaluator)
+{
+
+    vector<Ciphertext> ct_result(dimension);
+    for (int i = 0; i < dimension; i++)
+    {
+        // Create masks vector with 1s and 0s
+        // Fill mask vector with 0s
+        vector<double> mask_vec(pow(dimension, 2), 0);
+
+        // Store 1s in mask vector at dimension offset. Offset = j + (i * dimension)
+        for (int j = 0; j < dimension; j++)
+        {
+            mask_vec[j + (i * dimension)] = 1;
+        }
+
+        // Encode mask vector
+        Plaintext mask_pt;
+        ckks_encoder.encode(mask_vec, scale, mask_pt);
+
+        // multiply matrix with mask
+        Ciphertext ct_row;
+        evaluator.multiply_plain(matrix, mask_pt, ct_row);
+
+        // rotate row (not the first one)
+        if (i != 0)
+        {
+            evaluator.rotate_vector_inplace(ct_row, i * dimension, gal_keys);
+        }
+
+        // store in result
+        ct_result[i] = ct_row;
+    }
 
     return ct_result;
 }
@@ -392,7 +427,7 @@ void MatrixTranspose(size_t poly_modulus_degree, int dimension)
     // --------------- MATRIX ENCODING ----------------
     // Matrix Encode Matrix 1
     cout << "\nMatrix Encoding Matrix 1...";
-    Ciphertext cipher_encoded_matrix1_set1 = C_Matrix_Encode(cipher_matrix1_set1, gal_keys, params);
+    Ciphertext cipher_encoded_matrix1_set1 = C_Matrix_Encode(cipher_matrix1_set1, gal_keys, evaluator);
     cout << "Done" << endl;
 
     // --------------- MATRIX TRANSPOSING ----------------
@@ -423,6 +458,26 @@ void MatrixTranspose(size_t poly_modulus_degree, int dimension)
         cout << result_matrix[i] << ", ";
     }
     cout << endl;
+
+    // Test Matrix DECODE
+    cout << "\nMATRIX DECODING... ";
+    vector<Ciphertext> ct_decoded_vec = C_Matrix_Decode(ct_result, dimension, scale, gal_keys, ckks_encoder, evaluator);
+    cout << "Done" << endl;
+
+    // DECRYPT and DECODE
+    vector<Plaintext> pt_decoded_vec(dimension);
+    for (int i = 0; i < dimension; i++)
+    {
+        decryptor.decrypt(ct_decoded_vec[i], pt_decoded_vec[i]);
+        vector<double> decoded_vec;
+        ckks_encoder.decode(pt_decoded_vec[i], decoded_vec);
+        cout << "\t[";
+        for (int j = 0; j < dimension; j++)
+        {
+            cout << decoded_vec[j] << ", ";
+        }
+        cout << "]" << endl;
+    }
 }
 
 int main()
