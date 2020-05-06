@@ -45,6 +45,23 @@ Horner's method for evaluating polynomials uses `D` multiplications and addition
 ### Tree Method
 The tree method for evaluating polynomials uses `log(D)` multiplications and additions where `D` is the degree of the polynomial. This functions faster than Horner's method since it requires less operations which also allow us to have a lower `poly_modulus_degree` and smaller Modulus Chain. 
 
+## Logistic Regression
+
+The goal of this project is eventually to implement a logistic regression model that could work over encrypted data. The dataset used is `pulsar_stars.csv` simply because it was easy to use: the features are integers and the labels are at the last column 0s and 1s. To use this dataset properly the features matrix has to be standardized, that is why I built a `standard_scaler` function that performs `(value - mean )/ standard_deviation` over the values of the features matrix. I have also provided helper functions for transforming the CSV file into a matrix of floats.
+
+### Normal LR
+This version of Logistic Regression has the functions:
+- `sigmoid`: returns the sigmoid of a value
+- `predict`: returns the sigmoid of the linear transformation between the features and the weights
+- `cost_function`: returns the cost
+- `update_weights` or Gradient Descent: returns the updated weights
+- `train`: returns the new weights and the cost history after a certain number of iterations of training
+
+### SEAL CKKS LR
+This version of Logistic Regression works on encrypted data using the CKKS scheme. It has the same functions as the normal logistic regression code except they have been modified to work using the SEAL functions. Since there is no way to write the sigmoid function `1/(1 + e^-value)` in SEAL because there are no division and exponential operation in HE, an approximation of it is required. The polynomial approximation used here is based on the finding in the paper https://eprint.iacr.org/2018/074.pdf and is of the form: 
+- `f3(x) = 0.5 + 1.20096(x/8) - 0.81562(x/8)^3` with a polynomial of degree 3
+- `f7(x) = 0.5 + 1.73496(x/8) - 4.19407(x/8)^3 + 5.43402(x/8)^5 - 2.50739(x/8)^7` with a polynomial of degree 7
+The polynomial approximation of the sigmoid function can be evaluated with the polynomial evaluation methods: Horner's and Tree method.
 
 
 ## About the example files
