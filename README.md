@@ -61,6 +61,7 @@ This version of Logistic Regression has the functions:
 This version of Logistic Regression works on encrypted data using the CKKS scheme. It has the same functions as the normal logistic regression code except they have been modified to work using the SEAL functions. Since there is no way to write the sigmoid function `1/(1 + e^-value)` in SEAL because there are no division and exponential operation in HE, an approximation of it is required. The polynomial approximation used here is based on the finding in the paper https://eprint.iacr.org/2018/074.pdf and is of the form: 
 - `f3(x) = 0.5 + 1.20096(x/8) - 0.81562(x/8)^3` with a polynomial of degree 3
 - `f7(x) = 0.5 + 1.73496(x/8) - 4.19407(x/8)^3 + 5.43402(x/8)^5 - 2.50739(x/8)^7` with a polynomial of degree 7
+
 The polynomial approximation of the sigmoid function can be evaluated with the polynomial evaluation methods: Horner's and Tree method.
 
 
