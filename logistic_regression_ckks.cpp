@@ -233,11 +233,8 @@ Ciphertext Linear_Transform_Plain(Ciphertext ct, vector<Plaintext> U_diagonals, 
     return ct_prime;
 }
 
-Ciphertext Linear_Transform_Cipher(Ciphertext ct, vector<Ciphertext> U_diagonals, GaloisKeys gal_keys, EncryptionParameters params)
+Ciphertext Linear_Transform_Cipher(Ciphertext ct, vector<Ciphertext> U_diagonals, GaloisKeys gal_keys, Evaluator &evaluator)
 {
-    auto context = SEALContext::Create(params);
-    Evaluator evaluator(context);
-
     // Fill ct with duplicate
     Ciphertext ct_rot;
     evaluator.rotate_vector(ct, -U_diagonals.size(), gal_keys, ct_rot);
@@ -385,6 +382,7 @@ void compute_all_powers(const Ciphertext &ctx, int degree, Evaluator &evaluator,
     vector<int> levels(degree + 1, 0);
     levels[1] = 0;
     levels[0] = 0;
+    cout << "-> " << __LINE__ << endl;
 
     for (int i = 2; i <= degree; i++)
     {
@@ -402,6 +400,8 @@ void compute_all_powers(const Ciphertext &ctx, int degree, Evaluator &evaluator,
                 minlevel = newlevel;
             }
         }
+        cout << "-> " << __LINE__ << endl;
+
         levels[i] = minlevel;
         // use cand
         if (cand < 0)
@@ -410,11 +410,18 @@ void compute_all_powers(const Ciphertext &ctx, int degree, Evaluator &evaluator,
         // cand <= i - cand by definition
         Ciphertext temp = powers[cand];
         evaluator.mod_switch_to_inplace(temp, powers[i - cand].parms_id());
+        cout << "-> " << __LINE__ << endl;
 
         evaluator.multiply(temp, powers[i - cand], powers[i]);
+        cout << "-> " << __LINE__ << endl;
+
         evaluator.relinearize_inplace(powers[i], relin_keys);
+        cout << "-> " << __LINE__ << endl;
+
         evaluator.rescale_to_next_inplace(powers[i]);
     }
+    cout << "-> " << __LINE__ << endl;
+
     return;
 }
 
@@ -566,14 +573,141 @@ vector<T> rotate_vec(vector<T> input_vec, int num_rotations)
     return rotated_res;
 }
 
-Ciphertext sigmoid(Ciphertext ct)
+// Sigmoid
+float sigmoid(float z)
 {
-    Ciphertext res;
-    // -------- write polynomial approximation --------
-    return res;
+    return 1 / (1 + exp(-z));
 }
 
-Ciphertext predict(vector<Ciphertext> features, Plaintext weights, int num_weights, double scale, Evaluator &evaluator, CKKSEncoder &ckks_encoder, GaloisKeys gal_keys)
+// Degree 3 Polynomial approximation of sigmoid function
+Ciphertext Tree_sigmoid_approx(Ciphertext ctx, int degree, vector<double> coeffs, CKKSEncoder &ckks_encoder, Evaluator &evaluator, Encryptor &encryptor, RelinKeys relin_keys)
+{
+    // -------- write polynomial approximation --------
+
+    int depth = ceil(log2(degree));
+
+    vector<int> moduli(depth + 4, 40);
+    moduli[0] = 50;
+    moduli[moduli.size() - 1] = 59;
+
+    double scale = pow(2.0, 40);
+
+    // vector<double> coeffs(degree + 1);
+    vector<Plaintext> plain_coeffs(degree + 1);
+
+    cout << "Polynomial = ";
+    int counter = 0;
+    for (size_t i = 0; i < degree + 1; i++)
+    {
+        ckks_encoder.encode(coeffs[i], scale, plain_coeffs[i]);
+        cout << "x^" << counter << " * (" << coeffs[i] << ")"
+             << ", ";
+        counter++;
+    }
+    cout << endl;
+
+    Plaintext plain_result;
+    vector<double> result;
+
+    double expected_result = coeffs[degree];
+
+    // Compute all powers
+    vector<Ciphertext> powers(degree + 1);
+
+    cout << "-> " << __LINE__ << endl;
+
+    compute_all_powers(ctx, degree, evaluator, relin_keys, powers);
+    cout << "All powers computed " << endl;
+
+    Ciphertext enc_result;
+    cout << "Encrypt first coeff...";
+    encryptor.encrypt(plain_coeffs[0], enc_result);
+    cout << "Done" << endl;
+
+    Ciphertext temp;
+
+    for (int i = 1; i <= degree; i++)
+    {
+        evaluator.mod_switch_to_inplace(plain_coeffs[i], powers[i].parms_id());
+        evaluator.multiply_plain(powers[i], plain_coeffs[i], temp);
+
+        evaluator.rescale_to_next_inplace(temp);
+        evaluator.mod_switch_to_inplace(enc_result, temp.parms_id());
+
+        // Manual Rescale
+        enc_result.scale() = pow(2.0, 40);
+        temp.scale() = pow(2.0, 40);
+
+        evaluator.add_inplace(enc_result, temp);
+    }
+
+    // // Compute Expected result
+    // for (int i = degree - 1; i >= 0; i--)
+    // {
+    //     expected_result *= x;
+    //     expected_result += coeffs[i];
+    // }
+
+    // decryptor.decrypt(enc_result, plain_result);
+    // ckks_encoder.decode(plain_result, result);
+
+    // cout << "Actual : " << result[0] << "\nExpected : " << expected_result << "\ndiff : " << abs(result[0] - expected_result) << endl;
+
+    return enc_result;
+}
+
+Ciphertext Horner_sigmoid_approx(Ciphertext ctx, int degree, vector<double> coeffs, CKKSEncoder &ckks_encoder, Evaluator &evaluator, Encryptor &encryptor, RelinKeys relin_keys)
+{
+
+    vector<int> moduli(degree + 4, 40);
+    moduli[0] = 50;
+    moduli[moduli.size() - 1] = 59;
+
+    double scale = pow(2.0, 40);
+
+    vector<Plaintext> plain_coeffs(degree + 1);
+
+    // Random Coefficients from 0-1
+    cout << "Polynomial = ";
+    int counter = 0;
+    for (size_t i = 0; i < degree + 1; i++)
+    {
+        // coeffs[i] = (double)rand() / RAND_MAX;
+        ckks_encoder.encode(coeffs[i], scale, plain_coeffs[i]);
+        cout << "x^" << counter << " * (" << coeffs[i] << ")"
+             << ", ";
+        counter++;
+    }
+    cout << endl;
+
+    Ciphertext temp;
+    encryptor.encrypt(plain_coeffs[degree], temp);
+
+    Plaintext plain_result;
+    vector<double> result;
+
+    for (int i = degree - 1; i >= 0; i--)
+    {
+
+        evaluator.mod_switch_to_inplace(ctx, temp.parms_id());
+        evaluator.multiply_inplace(temp, ctx);
+
+        evaluator.relinearize_inplace(temp, relin_keys);
+
+        evaluator.rescale_to_next_inplace(temp);
+
+        evaluator.mod_switch_to_inplace(plain_coeffs[i], temp.parms_id());
+
+        // Manual rescale
+        temp.scale() = pow(2.0, 40);
+        evaluator.add_plain_inplace(temp, plain_coeffs[i]);
+    }
+
+    return temp;
+}
+
+
+Ciphertext predict_plain_weights(vector<Ciphertext> features, Plaintext weights, int num_weights, double scale, Evaluator &evaluator, CKKSEncoder &ckks_encoder, GaloisKeys gal_keys)
 {
     // Get rotations of weights
     vector<Plaintext> weights_rotations(num_weights);
@@ -599,16 +733,31 @@ Ciphertext predict(vector<Ciphertext> features, Plaintext weights, int num_weigh
     Ciphertext lintransf_vec = Linear_Transform_CipherMatrix_PlainVector(weights_rotations, features, gal_keys, evaluator);
 
     // Sigmoid over result
-    Ciphertext predict_res = sigmoid(lintransf_vec);
+    Ciphertext predict_res;
 
     return predict_res;
 }
+
+
+Ciphertext predict_cipher_weights(vector<Ciphertext> features_diagonals, Ciphertext weights, int num_weights, double scale, Evaluator &evaluator, CKKSEncoder &ckks_encoder, GaloisKeys gal_keys)
+{
+
+    // Linear Transformation
+    Ciphertext lintransf_vec = Linear_Transform_Cipher(weights, features_diagonals, gal_keys, evaluator);
+
+    // Sigmoid over result
+    Ciphertext predict_res;
+
+    return predict_res;
+}
+
 
 Ciphertext update_weights(vector<Ciphertext> features, Ciphertext labels, Plaintext weights, float learning_rate, vector<Plaintext> U_transpose, int observations, int num_weights, double scale, EncryptionParameters params, Evaluator &evaluator, CKKSEncoder &ckks_encoder, GaloisKeys gal_keys)
 {
 
     // Get predictions
-    Ciphertext predictions = predict(features, weights, num_weights, scale, evaluator, ckks_encoder, gal_keys);
+    Ciphertext predictions;
+    // predictions = predict(features, weights, num_weights, scale, evaluator, ckks_encoder, gal_keys);
 
     // Tranpose features matrix -----------------
     vector<Ciphertext> features_T;
@@ -618,7 +767,7 @@ Ciphertext update_weights(vector<Ciphertext> features, Ciphertext labels, Plaint
     evaluator.sub(predictions, labels, pred_labels);
 
     // Calculate Gradient vector
-    Ciphertext gradient = Linear_Transform_Cipher(pred_labels, features_T, gal_keys, params);
+    Ciphertext gradient = Linear_Transform_Cipher(pred_labels, features_T, gal_keys, evaluator);
 
     // Divide by N = 1/observations -> multiply by N_pt
     int N = 1 / observations;
@@ -646,8 +795,95 @@ Ciphertext train(vector<Ciphertext> features, Ciphertext labels, Plaintext weigh
 
     return new_weights;
 }
+
+
+
+double sigmoid_approx_three(double x)
+{
+    double res = 0.5 + (1.20096 * (x / 8)) - (0.81562 * (pow((x / 8), 3)));
+    return res;
+}
+
 int main()
 {
+
+    // Test evaluate sigmoid approx
+    EncryptionParameters params(scheme_type::CKKS);
+
+    int degree = 3;
+
+    int depth = ceil(log2(degree));
+
+    vector<int> moduli(depth + 4, 40);
+    moduli[0] = 50;
+    moduli[moduli.size() - 1] = 59;
+
+    size_t poly_modulus_degree = 16384;
+    params.set_poly_modulus_degree(poly_modulus_degree);
+    params.set_coeff_modulus(CoeffModulus::Create(poly_modulus_degree, moduli));
+
+    double scale = pow(2.0, 40);
+
+    auto context = SEALContext::Create(params);
+
+    // Generate keys, encryptor, decryptor and evaluator
+    KeyGenerator keygen(context);
+    PublicKey pk = keygen.public_key();
+    SecretKey sk = keygen.secret_key();
+    GaloisKeys gal_keys = keygen.galois_keys();
+    RelinKeys relin_keys = keygen.relin_keys();
+
+    Encryptor encryptor(context, pk);
+    Evaluator evaluator(context);
+    Decryptor decryptor(context, sk);
+
+    // Create CKKS encoder
+    CKKSEncoder ckks_encoder(context);
+
+    // -------------------------- TEST SIGMOID APPROXIMATION ---------------------------
+    cout << "\n------------------- TEST SIGMOID APPROXIMATION -------------------\n" << endl;
+
+    // Create data
+    double x = 0.8;
+    double x_eight = x / 8;
+    Plaintext ptx;
+    ckks_encoder.encode(x_eight, scale, ptx);
+    Ciphertext ctx;
+    encryptor.encrypt(ptx, ctx);
+
+    // Create coeffs
+    vector<double> coeffs = {0.5, 1.20069, 0, -0.81562};
+
+    // Multiply x by 1/8
+    double eight = 1/8;
+    Plaintext eight_pt;
+    ckks_encoder.encode(eight, scale, eight_pt);
+    // evaluator.multiply_plain_inplace(ctx, eight_pt);
+
+    // Ciphertext ct_res_sigmoid = Tree_sigmoid_approx(ctx, degree, coeffs, ckks_encoder, evaluator, encryptor, relin_keys);
+    Ciphertext ct_res_sigmoid = Horner_sigmoid_approx(ctx, degree, coeffs, ckks_encoder, evaluator, encryptor, relin_keys);
+
+    // Decrypt and decode
+    Plaintext pt_res_sigmoid;
+    decryptor.decrypt(ct_res_sigmoid, pt_res_sigmoid);
+    vector<double> res_sigmoid_vec;
+    ckks_encoder.decode(pt_res_sigmoid, res_sigmoid_vec);
+
+    // Get True expected result
+    double true_expected_res = sigmoid(x_eight);
+
+    // Get expected approximate result
+    double expected_approx_res = sigmoid_approx_three(x);
+
+    cout << "Actual Approximate Result =\t" << res_sigmoid_vec[0] << endl;
+    cout << "Expected Approximate Result =\t" << expected_approx_res << endl;
+    cout << "True Result =\t\t\t" << expected_approx_res << endl;
+    
+    double difference = abs(res_sigmoid_vec[0] - true_expected_res);
+    cout << "Diff Actual and True =\t\t" << difference << endl;
+
+    double horner_error = abs(res_sigmoid_vec[0] - expected_approx_res);
+    cout << "Diff Actual and Expected =\t" << horner_error << endl;
 
     return 0;
 }
