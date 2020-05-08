@@ -206,11 +206,8 @@ vector<vector<T>> get_all_diagonals(vector<vector<T>> U)
     return diagonal_matrix;
 }
 
-Ciphertext Linear_Transform_Plain(Ciphertext ct, vector<Plaintext> U_diagonals, GaloisKeys gal_keys, EncryptionParameters params)
+Ciphertext Linear_Transform_Plain(Ciphertext ct, vector<Plaintext> U_diagonals, GaloisKeys gal_keys, Evaluator &evaluator)
 {
-    auto context = SEALContext::Create(params);
-    Evaluator evaluator(context);
-
     // Fill ct with duplicate
     Ciphertext ct_rot;
     evaluator.rotate_vector(ct, -U_diagonals.size(), gal_keys, ct_rot);
@@ -300,11 +297,8 @@ vector<vector<double>> get_matrix_of_ones(int position, vector<vector<T>> U)
 }
 
 // Encodes Ciphertext Matrix into a single vector (Row ordering of a matix)
-Ciphertext C_Matrix_Encode(vector<Ciphertext> matrix, GaloisKeys gal_keys, EncryptionParameters params)
+Ciphertext C_Matrix_Encode(vector<Ciphertext> matrix, GaloisKeys gal_keys, Evaluator &evaluator)
 {
-    auto context = SEALContext::Create(params);
-    Evaluator evaluator(context);
-
     Ciphertext ct_result;
     int dimension = matrix.size();
     vector<Ciphertext> ct_rots(dimension);
@@ -316,6 +310,44 @@ Ciphertext C_Matrix_Encode(vector<Ciphertext> matrix, GaloisKeys gal_keys, Encry
     }
 
     evaluator.add_many(ct_rots, ct_result);
+
+    return ct_result;
+}
+
+// Decodes Ciphertext Matrix into vector of Ciphertexts
+vector<Ciphertext> C_Matrix_Decode(Ciphertext matrix, int dimension, double scale, GaloisKeys gal_keys, CKKSEncoder &ckks_encoder, Evaluator &evaluator)
+{
+
+    vector<Ciphertext> ct_result(dimension);
+    for (int i = 0; i < dimension; i++)
+    {
+        // Create masks vector with 1s and 0s
+        // Fill mask vector with 0s
+        vector<double> mask_vec(pow(dimension, 2), 0);
+
+        // Store 1s in mask vector at dimension offset. Offset = j + (i * dimension)
+        for (int j = 0; j < dimension; j++)
+        {
+            mask_vec[j + (i * dimension)] = 1;
+        }
+
+        // Encode mask vector
+        Plaintext mask_pt;
+        ckks_encoder.encode(mask_vec, scale, mask_pt);
+
+        // multiply matrix with mask
+        Ciphertext ct_row;
+        evaluator.multiply_plain(matrix, mask_pt, ct_row);
+
+        // rotate row (not the first one)
+        if (i != 0)
+        {
+            evaluator.rotate_vector_inplace(ct_row, i * dimension, gal_keys);
+        }
+
+        // store in result
+        ct_result[i] = ct_row;
+    }
 
     return ct_result;
 }
@@ -706,7 +738,6 @@ Ciphertext Horner_sigmoid_approx(Ciphertext ctx, int degree, vector<double> coef
     return temp;
 }
 
-
 Ciphertext predict_plain_weights(vector<Ciphertext> features, Plaintext weights, int num_weights, double scale, Evaluator &evaluator, CKKSEncoder &ckks_encoder, GaloisKeys gal_keys)
 {
     // Get rotations of weights
@@ -738,36 +769,40 @@ Ciphertext predict_plain_weights(vector<Ciphertext> features, Plaintext weights,
     return predict_res;
 }
 
-
-Ciphertext predict_cipher_weights(vector<Ciphertext> features_diagonals, Ciphertext weights, int num_weights, double scale, Evaluator &evaluator, CKKSEncoder &ckks_encoder, GaloisKeys gal_keys)
+Ciphertext predict_cipher_weights(vector<Ciphertext> features_diagonals, Ciphertext weights, int num_weights, Evaluator &evaluator, CKKSEncoder &ckks_encoder, GaloisKeys gal_keys, RelinKeys relin_keys, Encryptor &encryptor)
 {
 
     // Linear Transformation
     Ciphertext lintransf_vec = Linear_Transform_Cipher(weights, features_diagonals, gal_keys, evaluator);
 
     // Sigmoid over result
-    Ciphertext predict_res;
+    vector<double> coeffs = {0.5, 1.20069, 0, -0.81562};
+    Ciphertext predict_res = Horner_sigmoid_approx(lintransf_vec, 3, coeffs, ckks_encoder, evaluator, encryptor, relin_keys);
 
     return predict_res;
 }
 
-
-Ciphertext update_weights(vector<Ciphertext> features, Ciphertext labels, Plaintext weights, float learning_rate, vector<Plaintext> U_transpose, int observations, int num_weights, double scale, EncryptionParameters params, Evaluator &evaluator, CKKSEncoder &ckks_encoder, GaloisKeys gal_keys)
+Ciphertext update_weights(vector<Ciphertext> features_diagonals, Ciphertext labels, Ciphertext weights, float learning_rate, vector<Plaintext> U_transpose, int observations, int num_weights, Evaluator &evaluator, CKKSEncoder &ckks_encoder, GaloisKeys gal_keys, RelinKeys relin_keys, Encryptor &encryptor, double scale)
 {
 
     // Get predictions
     Ciphertext predictions;
-    // predictions = predict(features, weights, num_weights, scale, evaluator, ckks_encoder, gal_keys);
+    predictions = predict_cipher_weights(features_diagonals, weights, num_weights, evaluator, ckks_encoder, gal_keys, relin_keys, encryptor);
 
-    // Tranpose features matrix -----------------
-    vector<Ciphertext> features_T;
+    // Tranpose features matrix
+    // Matrix Encode features diagonals
+    Ciphertext features_diagonals_encoded = C_Matrix_Encode(features_diagonals, gal_keys, evaluator);
+    // Transpose encoded features diagonals
+    Ciphertext features_diagonals_T_encoded = Linear_Transform_Plain(features_diagonals_encoded, U_transpose, gal_keys, evaluator);
+    //
+    vector<Ciphertext> features_diagonals_T = C_Matrix_Decode(features_diagonals_T_encoded, num_weights, scale, gal_keys, ckks_encoder, evaluator);
 
     // Calculate Predictions - Labels
     Ciphertext pred_labels;
     evaluator.sub(predictions, labels, pred_labels);
 
     // Calculate Gradient vector
-    Ciphertext gradient = Linear_Transform_Cipher(pred_labels, features_T, gal_keys, evaluator);
+    Ciphertext gradient = Linear_Transform_Cipher(pred_labels, features_diagonals_T, gal_keys, evaluator);
 
     // Divide by N = 1/observations -> multiply by N_pt
     int N = 1 / observations;
@@ -782,26 +817,156 @@ Ciphertext update_weights(vector<Ciphertext> features, Ciphertext labels, Plaint
 
     // Subtract from weights
     Ciphertext new_weights;
-    evaluator.sub_plain(gradient, weights, new_weights);
+    evaluator.sub(gradient, weights, new_weights);
     evaluator.negate_inplace(new_weights);
 
     return new_weights;
 }
 
-Ciphertext train(vector<Ciphertext> features, Ciphertext labels, Plaintext weights, float learning_rate, int iters)
+Ciphertext train(vector<Ciphertext> features_diagonals, Ciphertext labels, Ciphertext weights, float learning_rate, int iters, vector<Plaintext> U_transpose, int observations, int num_weights, Evaluator &evaluator, CKKSEncoder &ckks_encoder, GaloisKeys gal_keys, RelinKeys relin_keys, Encryptor &encryptor, double scale)
 {
 
-    Ciphertext new_weights;
+    // Copy weights to new_weights
+    Ciphertext new_weights = weights;
+
+    for (int i = 0; i < iters; i++)
+    {
+        // Get new weights
+        new_weights = update_weights(features_diagonals, labels, new_weights, learning_rate, U_transpose, observations, num_weights, evaluator, ckks_encoder, gal_keys, relin_keys, encryptor, scale);
+
+        // Get cost ????
+
+        // Log Progress
+        if (i % 100 == 0)
+        {
+            cout << "Iteration:\t" << i << endl;
+        }
+    }
 
     return new_weights;
 }
-
-
 
 double sigmoid_approx_three(double x)
 {
     double res = 0.5 + (1.20096 * (x / 8)) - (0.81562 * (pow((x / 8), 3)));
     return res;
+}
+
+// CSV to string matrix converter
+vector<vector<string>> CSVtoMatrix(string filename)
+{
+    vector<vector<string>> result_matrix;
+
+    ifstream data(filename);
+    string line;
+    int line_count = 0;
+    while (getline(data, line))
+    {
+        stringstream lineStream(line);
+        string cell;
+        vector<string> parsedRow;
+        while (getline(lineStream, cell, ','))
+        {
+            parsedRow.push_back(cell);
+        }
+        // Skip first line since it has text instead of numbers
+        if (line_count != 0)
+        {
+            result_matrix.push_back(parsedRow);
+        }
+        line_count++;
+    }
+    return result_matrix;
+}
+
+// String matrix to float matrix converter
+vector<vector<float>> stringToFloatMatrix(vector<vector<string>> matrix)
+{
+    vector<vector<float>> result(matrix.size(), vector<float>(matrix[0].size()));
+    for (int i = 0; i < matrix.size(); i++)
+    {
+        for (int j = 0; j < matrix[0].size(); j++)
+        {
+            result[i][j] = ::atof(matrix[i][j].c_str());
+        }
+    }
+
+    return result;
+}
+
+// Mean calculation
+float getMean(vector<float> input_vec)
+{
+    float mean = 0;
+    for (int i = 0; i < input_vec.size(); i++)
+    {
+        mean += input_vec[i];
+    }
+    mean /= input_vec.size();
+
+    return mean;
+}
+
+// Standard Dev calculation
+float getStandardDev(vector<float> input_vec, float mean)
+{
+    float variance = 0;
+    for (int i = 0; i < input_vec.size(); i++)
+    {
+        variance += pow(input_vec[i] - mean, 2);
+    }
+    variance /= input_vec.size();
+
+    float standard_dev = sqrt(variance);
+    return standard_dev;
+}
+
+// Standard Scaler
+vector<vector<float>> standard_scaler(vector<vector<float>> input_matrix)
+{
+    int rowSize = input_matrix.size();
+    int colSize = input_matrix[0].size();
+    vector<vector<float>> result_matrix(rowSize, vector<float>(colSize));
+
+    // Optimization: Get Means and Standard Devs first then do the scaling
+    // first pass: get means and standard devs
+    vector<float> means_vec(colSize);
+    vector<float> stdev_vec(colSize);
+    for (int i = 0; i < colSize; i++)
+    {
+        vector<float> column(rowSize);
+        for (int j = 0; j < rowSize; j++)
+        {
+            // cout << input_matrix[j][i] << ", ";
+            column[j] = input_matrix[j][i];
+            // cout << column[j] << ", ";
+        }
+
+        means_vec[i] = getMean(column);
+        stdev_vec[i] = getStandardDev(column, means_vec[i]);
+        // cout << "MEAN at i = " << i << ":\t" << means_vec[i] << endl;
+        // cout << "STDV at i = " << i << ":\t" << stdev_vec[i] << endl;
+    }
+
+    // second pass: scale
+    for (int i = 0; i < rowSize; i++)
+    {
+        for (int j = 0; j < colSize; j++)
+        {
+            result_matrix[i][j] = (input_matrix[i][j] - means_vec[j]) / stdev_vec[j];
+            // cout << "RESULT at i = " << i << ":\t" << result_matrix[i][j] << endl;
+        }
+    }
+
+    return result_matrix;
+}
+
+float RandomFloat(float a, float b)
+{
+    float random = ((float)rand()) / (float)RAND_MAX;
+    float diff = b - a;
+    float r = random * diff;
+    return a + r;
 }
 
 int main()
@@ -841,7 +1006,8 @@ int main()
     CKKSEncoder ckks_encoder(context);
 
     // -------------------------- TEST SIGMOID APPROXIMATION ---------------------------
-    cout << "\n------------------- TEST SIGMOID APPROXIMATION -------------------\n" << endl;
+    cout << "\n------------------- TEST SIGMOID APPROXIMATION -------------------\n"
+         << endl;
 
     // Create data
     double x = 0.8;
@@ -855,7 +1021,7 @@ int main()
     vector<double> coeffs = {0.5, 1.20069, 0, -0.81562};
 
     // Multiply x by 1/8
-    double eight = 1/8;
+    double eight = 1 / 8;
     Plaintext eight_pt;
     ckks_encoder.encode(eight, scale, eight_pt);
     // evaluator.multiply_plain_inplace(ctx, eight_pt);
@@ -878,12 +1044,173 @@ int main()
     cout << "Actual Approximate Result =\t" << res_sigmoid_vec[0] << endl;
     cout << "Expected Approximate Result =\t" << expected_approx_res << endl;
     cout << "True Result =\t\t\t" << expected_approx_res << endl;
-    
+
     double difference = abs(res_sigmoid_vec[0] - true_expected_res);
     cout << "Diff Actual and True =\t\t" << difference << endl;
 
     double horner_error = abs(res_sigmoid_vec[0] - expected_approx_res);
     cout << "Diff Actual and Expected =\t" << horner_error << endl;
 
+    // --------------------------- TEST LR -----------------------------------------
+    cout << "\n--------------------------- TEST LR ---------------------------\n"
+         << endl;
+
+    // Read File
+    string filename = "pulsar_stars.csv";
+    vector<vector<string>> s_matrix = CSVtoMatrix(filename);
+    vector<vector<float>> f_matrix = stringToFloatMatrix(s_matrix);
+
+    // Test print first 10 rows
+    cout << "First 10 rows of CSV file --------\n"
+         << endl;
+    for (int i = 0; i < 10; i++)
+    {
+        for (int j = 0; j < f_matrix[0].size(); j++)
+        {
+            cout << f_matrix[i][j] << ", ";
+        }
+        cout << endl;
+    }
+    cout << "...........\nLast 10 rows of CSV file ----------\n"
+         << endl;
+    // Test print last 10 rows
+    for (int i = f_matrix.size() - 10; i < f_matrix.size(); i++)
+    {
+        for (int j = 0; j < f_matrix[0].size(); j++)
+        {
+            cout << f_matrix[i][j] << ", ";
+        }
+        cout << endl;
+    }
+
+    // Init features, labels and weights
+    // Init features (rows of f_matrix , cols of f_matrix - 1)
+    int rows = f_matrix.size();
+    cout << "\nNumber of rows  = " << rows << endl;
+    int cols = f_matrix[0].size() - 1;
+    cout << "\nNumber of cols  = " << cols << endl;
+
+    vector<vector<float>> features(rows, vector<float>(cols));
+    // Init labels (rows of f_matrix)
+    vector<float> labels(rows);
+    // Init weight vector with zeros (cols of features)
+    vector<float> weights(cols);
+
+    // Fill the features matrix and labels vector
+    for (int i = 0; i < rows; i++)
+    {
+        for (int j = 0; j < cols; j++)
+        {
+            features[i][j] = f_matrix[i][j];
+        }
+        labels[i] = f_matrix[i][cols];
+    }
+
+    // Fill the weights with random numbers (from 1 - 2)
+    for (int i = 0; i < cols; i++)
+    {
+        weights[i] = RandomFloat(-2, 2);
+        cout << "weights[i] = " << weights[i] << endl;
+    }
+
+    // Test print the features and labels
+    cout << "\nTesting features\n--------------\n"
+         << endl;
+
+    // Features Print test
+    cout << "Features row size = " << features.size() << endl;
+    cout << "Features col size = " << features[0].size() << endl;
+
+    cout << "Labels row size = " << labels.size() << endl;
+    cout << "Weights row size = " << weights.size() << endl;
+
+    for (int i = 0; i < 10; i++)
+    {
+        for (int j = 0; j < features[0].size(); j++)
+        {
+            cout << features[i][j] << ", ";
+        }
+        cout << endl;
+    }
+
+    // Standardize the features
+    cout << "\nSTANDARDIZE TEST---------\n"
+         << endl;
+
+    vector<vector<float>> standard_features = standard_scaler(features);
+
+    // Test print first 10 rows
+    for (int i = 0; i < 10; i++)
+    {
+        for (int j = 0; j < cols; j++)
+        {
+            cout << standard_features[i][j] << ", ";
+        }
+        cout << endl;
+    }
+    cout << "..........." << endl;
+    // Test print last 10 rows
+    for (int i = rows - 10; i < rows; i++)
+    {
+        for (int j = 0; j < cols; j++)
+        {
+            cout << standard_features[i][j] << ", ";
+        }
+        cout << endl;
+    }
+
+    cout << "\nTesting labels\n--------------\n"
+         << endl;
+
+    // Labels Print Test
+    for (int i = 0; i < 10; i++)
+    {
+        cout << labels[i] << ", ";
+    }
+    cout << endl;
+
+/*
+    // TRAIN
+    cout << "\nTraining--------------\n"
+         << endl;
+    tuple<vector<float>, vector<float>> training_tuple = train(standard_features, labels, weights, 0.1, 100);
+
+    vector<float> new_weights = get<0>(training_tuple);
+    vector<float> cost_history = get<1>(training_tuple);
+
+    // Print old weights
+    cout << "\nOLD WEIGHTS\n------------------"
+         << endl;
+    for (int i = 0; i < weights.size(); i++)
+    {
+        cout << weights[i] << ", ";
+    }
+    cout << endl;
+
+    // Print mew weights
+    cout << "\nNEW WEIGHTS\n------------------"
+         << endl;
+    for (int i = 0; i < new_weights.size(); i++)
+    {
+        cout << new_weights[i] << ", ";
+    }
+    cout << endl;
+
+    // Print Cost history
+    cout << "\nCOST HISTORY\n------------------"
+         << endl;
+    for (int i = 0; i < cost_history.size(); i++)
+    {
+        cout << cost_history[i] << ", ";
+        if (i % 10 == 0 && i > 0)
+        {
+            cout << "\n";
+        }
+    }
+    cout << endl;
+
+    // Print Accuracy
+    cout << "\nACCURACY\n-------------------" << endl;
+*/
     return 0;
 }
