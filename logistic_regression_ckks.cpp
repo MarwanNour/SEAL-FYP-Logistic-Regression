@@ -6,6 +6,8 @@
 using namespace std;
 using namespace seal;
 
+#define ITERS 100
+
 // Helper function that prints parameters
 void print_parameters(shared_ptr<SEALContext> context)
 {
@@ -823,7 +825,7 @@ Ciphertext update_weights(vector<Ciphertext> features_diagonals, Ciphertext labe
     return new_weights;
 }
 
-Ciphertext train(vector<Ciphertext> features_diagonals, Ciphertext labels, Ciphertext weights, float learning_rate, int iters, vector<Plaintext> U_transpose, int observations, int num_weights, Evaluator &evaluator, CKKSEncoder &ckks_encoder, GaloisKeys gal_keys, RelinKeys relin_keys, Encryptor &encryptor, double scale)
+Ciphertext train_cipher(vector<Ciphertext> features_diagonals, Ciphertext labels, Ciphertext weights, float learning_rate, int iters, vector<Plaintext> U_transpose, int observations, int num_weights, Evaluator &evaluator, CKKSEncoder &ckks_encoder, GaloisKeys gal_keys, RelinKeys relin_keys, Encryptor &encryptor, double scale)
 {
 
     // Copy weights to new_weights
@@ -880,14 +882,15 @@ vector<vector<string>> CSVtoMatrix(string filename)
 }
 
 // String matrix to float matrix converter
-vector<vector<float>> stringToFloatMatrix(vector<vector<string>> matrix)
+vector<vector<double>> stringToDoubleMatrix(vector<vector<string>> matrix)
 {
-    vector<vector<float>> result(matrix.size(), vector<float>(matrix[0].size()));
+    vector<vector<double>> result(matrix.size(), vector<double>(matrix[0].size()));
     for (int i = 0; i < matrix.size(); i++)
     {
         for (int j = 0; j < matrix[0].size(); j++)
         {
             result[i][j] = ::atof(matrix[i][j].c_str());
+            result[i][j] = static_cast<double>(result[i][j]);
         }
     }
 
@@ -895,7 +898,7 @@ vector<vector<float>> stringToFloatMatrix(vector<vector<string>> matrix)
 }
 
 // Mean calculation
-float getMean(vector<float> input_vec)
+double getMean(vector<double> input_vec)
 {
     float mean = 0;
     for (int i = 0; i < input_vec.size(); i++)
@@ -908,33 +911,33 @@ float getMean(vector<float> input_vec)
 }
 
 // Standard Dev calculation
-float getStandardDev(vector<float> input_vec, float mean)
+double getStandardDev(vector<double> input_vec, double mean)
 {
-    float variance = 0;
+    double variance = 0;
     for (int i = 0; i < input_vec.size(); i++)
     {
         variance += pow(input_vec[i] - mean, 2);
     }
     variance /= input_vec.size();
 
-    float standard_dev = sqrt(variance);
+    double standard_dev = sqrt(variance);
     return standard_dev;
 }
 
 // Standard Scaler
-vector<vector<float>> standard_scaler(vector<vector<float>> input_matrix)
+vector<vector<double>> standard_scaler(vector<vector<double>> input_matrix)
 {
     int rowSize = input_matrix.size();
     int colSize = input_matrix[0].size();
-    vector<vector<float>> result_matrix(rowSize, vector<float>(colSize));
+    vector<vector<double>> result_matrix(rowSize, vector<double>(colSize));
 
     // Optimization: Get Means and Standard Devs first then do the scaling
     // first pass: get means and standard devs
-    vector<float> means_vec(colSize);
-    vector<float> stdev_vec(colSize);
+    vector<double> means_vec(colSize);
+    vector<double> stdev_vec(colSize);
     for (int i = 0; i < colSize; i++)
     {
-        vector<float> column(rowSize);
+        vector<double> column(rowSize);
         for (int j = 0; j < rowSize; j++)
         {
             // cout << input_matrix[j][i] << ", ";
@@ -1056,9 +1059,9 @@ int main()
          << endl;
 
     // Read File
-    string filename = "pulsar_stars.csv";
+    string filename = "pulsar_stars_copy.csv";
     vector<vector<string>> s_matrix = CSVtoMatrix(filename);
-    vector<vector<float>> f_matrix = stringToFloatMatrix(s_matrix);
+    vector<vector<double>> f_matrix = stringToDoubleMatrix(s_matrix);
 
     // Test print first 10 rows
     cout << "First 10 rows of CSV file --------\n"
@@ -1090,11 +1093,11 @@ int main()
     int cols = f_matrix[0].size() - 1;
     cout << "\nNumber of cols  = " << cols << endl;
 
-    vector<vector<float>> features(rows, vector<float>(cols));
+    vector<vector<double>> features(rows, vector<double>(cols));
     // Init labels (rows of f_matrix)
-    vector<float> labels(rows);
+    vector<double> labels(rows);
     // Init weight vector with zeros (cols of features)
-    vector<float> weights(cols);
+    vector<double> weights(cols);
 
     // Fill the features matrix and labels vector
     for (int i = 0; i < rows; i++)
@@ -1137,7 +1140,7 @@ int main()
     cout << "\nSTANDARDIZE TEST---------\n"
          << endl;
 
-    vector<vector<float>> standard_features = standard_scaler(features);
+    vector<vector<double>> standard_features = standard_scaler(features);
 
     // Test print first 10 rows
     for (int i = 0; i < 10; i++)
@@ -1169,15 +1172,6 @@ int main()
     }
     cout << endl;
 
-/*
-    // TRAIN
-    cout << "\nTraining--------------\n"
-         << endl;
-    tuple<vector<float>, vector<float>> training_tuple = train(standard_features, labels, weights, 0.1, 100);
-
-    vector<float> new_weights = get<0>(training_tuple);
-    vector<float> cost_history = get<1>(training_tuple);
-
     // Print old weights
     cout << "\nOLD WEIGHTS\n------------------"
          << endl;
@@ -1186,6 +1180,61 @@ int main()
         cout << weights[i] << ", ";
     }
     cout << endl;
+
+    // -------------- ENCODING ----------------
+    // Encode features diagonals
+    vector<vector<double>> features_diagonals = get_all_diagonals(features);
+    vector<Plaintext> features_diagonals_pt(features_diagonals.size());
+    cout << "\nENCODING FEATURES DIAGONALS...";
+    for (int i = 0; i < features_diagonals.size(); i++)
+    {
+        ckks_encoder.encode(features_diagonals[i], scale, features_diagonals_pt[i]);
+    }
+    cout << "Done" << endl;
+
+    // Encode weights
+    Plaintext weights_pt;
+    cout << "\nENCODING WEIGHTS...";
+    ckks_encoder.encode(weights, scale, weights_pt);
+    cout << "Done" << endl;
+
+    // Encode labels
+    Plaintext labels_pt;
+    cout << "\nENCODING LABELS...";
+    ckks_encoder.encode(labels, scale, labels_pt);
+    cout << "Done" << endl;
+
+    // -------------- ENCRYPTING ----------------
+    //Encrypt features diagonals
+    vector<Ciphertext> features_diagonals_ct(features_diagonals.size());
+    cout << "\nENCRYPTING FEATURES DIAGONALS...";
+    for (int i = 0; i < features_diagonals.size(); i++)
+    {
+        encryptor.encrypt(features_diagonals_pt[i], features_diagonals_ct[i]);
+    }
+    cout << "Done" << endl;
+
+    // Encrypt weights
+    Ciphertext weights_ct;
+    cout << "\nENCRYPTING WEIGHTS...";
+    encryptor.encrypt(weights_pt, weights_ct);
+    cout << "Done" << endl;
+
+    // Encrypt labels
+    Ciphertext labels_ct;
+    cout << "\nENCRYPTING LABELS...";
+    encryptor.encrypt(labels_pt, labels_ct);
+    cout << "Done" << endl;
+
+    
+
+    /*
+    // --------------- TRAIN ---------------
+    cout << "\nTraining--------------\n"
+         << endl;
+    // tuple<vector<float>, vector<float>> training_tuple = train(standard_features, labels, weights, 0.1, 100);
+
+    Ciphertext new_weights_cipher = train_cipher(features_diagonals_cipher, labels, weights, learning_rate, ITERS, U_transpose, observations, num_weights, evaluator, ckks_encoder, gal_keys, relin_keys, encryptor, scale);
 
     // Print mew weights
     cout << "\nNEW WEIGHTS\n------------------"
@@ -1211,6 +1260,6 @@ int main()
 
     // Print Accuracy
     cout << "\nACCURACY\n-------------------" << endl;
-*/
+    */
     return 0;
 }

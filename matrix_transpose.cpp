@@ -128,21 +128,70 @@ template <typename T>
 vector<T> get_diagonal(int position, vector<vector<T>> U)
 {
 
-    vector<T> diagonal(U.size());
+    cout << "pos = " << position << endl;
 
-    int k = 0;
-    // U(0,l) , U(1,l+1), ... ,  U(n-l-1, n-1)
-    for (int i = 0, j = position; (i < U.size() - position) && (j < U.size()); i++, j++)
-    {
-        diagonal[k] = U[i][j];
-        k++;
-    }
-    for (int i = U.size() - position, j = 0; (i < U.size()) && (j < position); i++, j++)
-    {
-        diagonal[k] = U[i][j];
-        k++;
-    }
+    int numCols = U[0].size();
+    int numRows = U.size();
 
+    vector<T> diagonal(numCols);
+
+    if (numRows == numCols) // WORKS
+    {
+        cout << "numRows == numCols" << endl;
+        int k = 0;
+        for (int i = 0, j = position; (i < U.size() - position) && (j < U.size()); i++, j++)
+        {
+            diagonal[k] = U[i][j];
+            k++;
+        }
+        for (int i = U.size() - position, j = 0; (i < U.size()) && (j < position); i++, j++)
+        {
+            diagonal[k] = U[i][j];
+            k++;
+        }
+    }
+    else if (numRows < numCols) // WORKS
+    {
+        cout << "numRows < numCols" << endl;
+        int k = 0;
+        int i = 0;
+        int j;
+        for (int j = position; j < numCols; j++)
+        {
+            if (i == numRows)
+            {
+                i = 0;
+            }
+            diagonal[k] = U[i][j];
+            k++;
+            i++;
+        }
+        for (i = U.size() - position, j = 0; (i < U.size()) && (j < position); i++, j++)
+        {
+            diagonal[k] = U[i][j];
+            k++;
+        }
+    }
+    else // DOESN'T WORK !!!!
+    {
+
+        cout << "numRows > numCols" << endl;
+        /*
+        int k = 0;
+        for (int i = 0, j = position; (i < U.size() - position) && (j < U.size()); i++, j++)
+        {
+            diagonal[k] = U[i][j];
+            cout << diagonal[k] << ", ";
+            k++;
+        }
+        for (int i = U.size() - position, j = 0; (i < U.size()) && (j < position); i++, j++)
+        {
+            diagonal[k] = U[i][j];
+            cout << diagonal[k] << ", ";
+            k++;
+        }
+        */
+    }
     return diagonal;
 }
 
@@ -150,9 +199,12 @@ template <typename T>
 vector<vector<T>> get_all_diagonals(vector<vector<T>> U)
 {
 
-    vector<vector<T>> diagonal_matrix(U.size());
+    int numRows = U.size();
+    int numCols = U[0].size();
 
-    for (int i = 0; i < U.size(); i++)
+    vector<vector<T>> diagonal_matrix(numRows, vector<T>(numCols));
+
+    for (int i = 0; i < numRows; i++)
     {
         diagonal_matrix[i] = get_diagonal(i, U);
     }
@@ -322,6 +374,26 @@ vector<vector<double>> get_U_transpose(vector<vector<T>> U)
     return U_transpose;
 }
 
+// Matrix Transpose
+template <typename T>
+vector<vector<T>> transpose_matrix(vector<vector<T>> input_matrix)
+{
+
+    int rowSize = input_matrix.size();
+    int colSize = input_matrix[0].size();
+    vector<vector<T>> transposed(colSize, vector<T>(rowSize));
+
+    for (int i = 0; i < rowSize; i++)
+    {
+        for (int j = 0; j < colSize; j++)
+        {
+            transposed[j][i] = input_matrix[i][j];
+        }
+    }
+
+    return transposed;
+}
+
 void MatrixTranspose(size_t poly_modulus_degree, int dimension)
 {
     // Handle Rotation Error First
@@ -478,6 +550,40 @@ void MatrixTranspose(size_t poly_modulus_degree, int dimension)
         }
         cout << "]" << endl;
     }
+
+    // Dummy Diagonal test
+    cout << "\n----------------DUMMY TEST-----------------\n"
+         << endl;
+    int coldim = 4;
+    int rowdim = 3;
+    vector<vector<double>> dummy_matrix(rowdim, vector<double>(coldim));
+    vector<double> row_0 = {1, 2, 3, 4};
+    vector<double> row_1 = {5, 6, 7, 8};
+    vector<double> row_2 = {9, 10, 11, 12};
+
+    dummy_matrix[0] = row_0;
+    dummy_matrix[1] = row_1;
+    dummy_matrix[2] = row_2;
+
+    cout << "Dummy matrix:" << endl;
+    print_full_matrix(dummy_matrix);
+
+    vector<vector<double>> dummy_diagonals = get_all_diagonals(dummy_matrix);
+    cout << "\nDummy matrix diagonals:" << endl;
+
+    print_full_matrix(dummy_diagonals);
+
+    // cout << "\nTransposed dummy matrix diagonals:" << endl;
+    // vector<vector<double>> tranposed_diag = transpose_matrix(dummy_diagonals);
+    // print_full_matrix(tranposed_diag);
+
+    // cout << "\n\nTransposed dummy matrix:" << endl;
+    // vector<vector<double>> tranposed_dummy = transpose_matrix(dummy_matrix);
+    // print_full_matrix(tranposed_dummy);
+
+    // cout << "\nDiagonals of Transposed dummy:" << endl;
+    // vector<vector<double>> diag_tranposed_dummy = get_all_diagonals(tranposed_dummy);
+    // print_full_matrix(diag_tranposed_dummy);
 }
 
 int main()
