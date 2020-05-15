@@ -6,7 +6,8 @@
 using namespace std;
 using namespace seal;
 
-#define ITERS 100
+#define ITERS 10
+#define LEARNING_RATE 0.1
 
 // Helper function that prints parameters
 void print_parameters(shared_ptr<SEALContext> context)
@@ -206,30 +207,6 @@ vector<vector<T>> get_all_diagonals(vector<vector<T>> U)
     }
 
     return diagonal_matrix;
-}
-
-Ciphertext Linear_Transform_Plain(Ciphertext ct, vector<Plaintext> U_diagonals, GaloisKeys gal_keys, Evaluator &evaluator)
-{
-    // Fill ct with duplicate
-    Ciphertext ct_rot;
-    evaluator.rotate_vector(ct, -U_diagonals.size(), gal_keys, ct_rot);
-    // cout << "U_diagonals.size() = " << U_diagonals.size() << endl;
-    Ciphertext ct_new;
-    evaluator.add(ct, ct_rot, ct_new);
-
-    vector<Ciphertext> ct_result(U_diagonals.size());
-    evaluator.multiply_plain(ct_new, U_diagonals[0], ct_result[0]);
-
-    for (int l = 1; l < U_diagonals.size(); l++)
-    {
-        Ciphertext temp_rot;
-        evaluator.rotate_vector(ct_new, l, gal_keys, temp_rot);
-        evaluator.multiply_plain(temp_rot, U_diagonals[l], ct_result[l]);
-    }
-    Ciphertext ct_prime;
-    evaluator.add_many(ct_result, ct_prime);
-
-    return ct_prime;
 }
 
 Ciphertext Linear_Transform_Cipher(Ciphertext ct, vector<Ciphertext> U_diagonals, GaloisKeys gal_keys, Evaluator &evaluator)
@@ -616,7 +593,7 @@ float sigmoid(float z)
 // Degree 3 Polynomial approximation of sigmoid function
 Ciphertext Tree_sigmoid_approx(Ciphertext ctx, int degree, vector<double> coeffs, CKKSEncoder &ckks_encoder, Evaluator &evaluator, Encryptor &encryptor, RelinKeys relin_keys)
 {
-    // -------- write polynomial approximation --------
+    cout << "->" << __func__ << endl;
 
     int depth = ceil(log2(degree));
 
@@ -690,8 +667,35 @@ Ciphertext Tree_sigmoid_approx(Ciphertext ctx, int degree, vector<double> coeffs
     return enc_result;
 }
 
+// Ciphertext dot product
+Ciphertext cipher_dot_product(Ciphertext ctA, Ciphertext ctB, int size, RelinKeys relin_keys, GaloisKeys gal_keys, Evaluator &evaluator)
+{
+    Ciphertext mult;
+
+    // Component-wise multiplication
+    evaluator.multiply(ctA, ctB, mult);
+    evaluator.relinearize_inplace(mult, relin_keys);
+    evaluator.rescale_to_next_inplace(mult);
+
+    // Fill with duplicate
+    Ciphertext zero_filled;
+    evaluator.rotate_vector(mult, -size, gal_keys, zero_filled); // vector has zeros now
+    Ciphertext dup;
+    evaluator.add(mult, zero_filled, dup); // vector has duplicate now
+
+    for (int i = 1; i < size; i++)
+    {
+        evaluator.rotate_vector_inplace(dup, 1, gal_keys);
+        evaluator.add_inplace(mult, dup);
+    }
+
+    return mult;
+}
+
 Ciphertext Horner_sigmoid_approx(Ciphertext ctx, int degree, vector<double> coeffs, CKKSEncoder &ckks_encoder, Evaluator &evaluator, Encryptor &encryptor, RelinKeys relin_keys)
 {
+    cout << "->" << __func__ << endl;
+    cout << "->" << __LINE__ << endl;
 
     vector<int> moduli(degree + 4, 40);
     moduli[0] = 50;
@@ -713,120 +717,121 @@ Ciphertext Horner_sigmoid_approx(Ciphertext ctx, int degree, vector<double> coef
         counter++;
     }
     cout << endl;
+    cout << "->" << __LINE__ << endl;
 
     Ciphertext temp;
     encryptor.encrypt(plain_coeffs[degree], temp);
 
     Plaintext plain_result;
     vector<double> result;
+    cout << "->" << __LINE__ << endl;
 
     for (int i = degree - 1; i >= 0; i--)
     {
+        cout << "->" << __LINE__ << endl;
 
         evaluator.mod_switch_to_inplace(ctx, temp.parms_id());
         evaluator.multiply_inplace(temp, ctx);
+        cout << "->" << __LINE__ << endl;
 
         evaluator.relinearize_inplace(temp, relin_keys);
 
         evaluator.rescale_to_next_inplace(temp);
+        cout << "->" << __LINE__ << endl;
 
         evaluator.mod_switch_to_inplace(plain_coeffs[i], temp.parms_id());
 
         // Manual rescale
         temp.scale() = pow(2.0, 40);
+        cout << "->" << __LINE__ << endl;
+
         evaluator.add_plain_inplace(temp, plain_coeffs[i]);
     }
+    cout << "->" << __LINE__ << endl;
 
     return temp;
 }
 
-Ciphertext predict_plain_weights(vector<Ciphertext> features, Plaintext weights, int num_weights, double scale, Evaluator &evaluator, CKKSEncoder &ckks_encoder, GaloisKeys gal_keys)
+// Predict Ciphertext Weights
+Ciphertext predict_cipher_weights(vector<Ciphertext> features, Ciphertext weights, int num_weights, double scale, Evaluator &evaluator, CKKSEncoder &ckks_encoder, GaloisKeys gal_keys, RelinKeys relin_keys, Encryptor &encryptor)
 {
-    // Get rotations of weights
-    vector<Plaintext> weights_rotations(num_weights);
-    weights_rotations[0] = weights;
+    // cout << "->" << __func__ << endl;
+    // cout << "->" << __LINE__ << endl;
 
-    vector<double> decoded_weights(num_weights);
-    ckks_encoder.decode(weights, decoded_weights);
-
-    for (int i = 1; i < num_weights; i++)
+    // Linear Transformation (loop over rows and dot product)
+    int num_rows = features.size();
+    vector<Ciphertext> results(num_rows);
+    
+    for (int i = 0; i < num_rows; i++)
     {
-        // rotate
-        vector<double> rotated_vec = rotate_vec(decoded_weights, i);
-
-        // encode
-        Plaintext pt;
-        ckks_encoder.encode(rotated_vec, scale, pt);
-
-        // store
-        weights_rotations[i] = pt;
+        // Dot Product
+        results[i] = cipher_dot_product(features[i], weights, num_weights, relin_keys, gal_keys, evaluator);
+        // Create mask
+        vector<double> mask_vec(num_rows, 0);
+        mask_vec[i] = 1;
+        Plaintext mask_pt;
+        ckks_encoder.encode(mask_vec, scale, mask_pt);
+        // Multiply result with mask
+        evaluator.multiply_plain_inplace(results[i], mask_pt);
+        // Rescale
+        evaluator.rescale_to_next_inplace(results[i]);
     }
-
-    // Linear Transformation
-    Ciphertext lintransf_vec = Linear_Transform_CipherMatrix_PlainVector(weights_rotations, features, gal_keys, evaluator);
-
-    // Sigmoid over result
-    Ciphertext predict_res;
-
-    return predict_res;
-}
-
-Ciphertext predict_cipher_weights(vector<Ciphertext> features_diagonals, Ciphertext weights, int num_weights, Evaluator &evaluator, CKKSEncoder &ckks_encoder, GaloisKeys gal_keys, RelinKeys relin_keys, Encryptor &encryptor)
-{
-
-    // Linear Transformation
-    Ciphertext lintransf_vec = Linear_Transform_Cipher(weights, features_diagonals, gal_keys, evaluator);
-
+    // Add all results to ciphertext vec
+    Ciphertext lintransf_vec;
+    evaluator.add_many(results, lintransf_vec);
+    
     // Sigmoid over result
     vector<double> coeffs = {0.5, 1.20069, 0, -0.81562};
-    Ciphertext predict_res = Horner_sigmoid_approx(lintransf_vec, 3, coeffs, ckks_encoder, evaluator, encryptor, relin_keys);
+
+    Ciphertext predict_res = Horner_sigmoid_approx(lintransf_vec, coeffs.size() + 1, coeffs, ckks_encoder, evaluator, encryptor, relin_keys);
 
     return predict_res;
 }
 
-Ciphertext update_weights(vector<Ciphertext> features_diagonals, Ciphertext labels, Ciphertext weights, float learning_rate, vector<Plaintext> U_transpose, int observations, int num_weights, Evaluator &evaluator, CKKSEncoder &ckks_encoder, GaloisKeys gal_keys, RelinKeys relin_keys, Encryptor &encryptor, double scale)
+Ciphertext update_weights(vector<Ciphertext> features_diagonals, vector<Ciphertext> features_T_diagonals, Ciphertext labels, Ciphertext weights, float learning_rate, int observations, int num_weights, Evaluator &evaluator, CKKSEncoder &ckks_encoder, GaloisKeys gal_keys, RelinKeys relin_keys, Encryptor &encryptor, double scale)
 {
+    cout << "->" << __func__ << endl;
+    cout << "->" << __LINE__ << endl;
 
     // Get predictions
     Ciphertext predictions;
-    predictions = predict_cipher_weights(features_diagonals, weights, num_weights, evaluator, ckks_encoder, gal_keys, relin_keys, encryptor);
-
-    // Tranpose features matrix
-    // Matrix Encode features diagonals
-    Ciphertext features_diagonals_encoded = C_Matrix_Encode(features_diagonals, gal_keys, evaluator);
-    // Transpose encoded features diagonals
-    Ciphertext features_diagonals_T_encoded = Linear_Transform_Plain(features_diagonals_encoded, U_transpose, gal_keys, evaluator);
-    //
-    vector<Ciphertext> features_diagonals_T = C_Matrix_Decode(features_diagonals_T_encoded, num_weights, scale, gal_keys, ckks_encoder, evaluator);
+    // predictions = predict_cipher_weights(features_diagonals, weights, num_weights, evaluator, ckks_encoder, gal_keys, relin_keys, encryptor);
+    cout << "->" << __LINE__ << endl;
 
     // Calculate Predictions - Labels
     Ciphertext pred_labels;
-    evaluator.sub(predictions, labels, pred_labels);
+    evaluator.sub(predictions, labels, pred_labels); // DEBUG !!!!!!!
+    cout << "->" << __LINE__ << endl;
 
     // Calculate Gradient vector
-    Ciphertext gradient = Linear_Transform_Cipher(pred_labels, features_diagonals_T, gal_keys, evaluator);
+    Ciphertext gradient = Linear_Transform_Cipher(pred_labels, features_T_diagonals, gal_keys, evaluator);
 
     // Divide by N = 1/observations -> multiply by N_pt
     int N = 1 / observations;
     Plaintext N_pt;
     ckks_encoder.encode(N, N_pt);
     evaluator.multiply_plain_inplace(gradient, N_pt);
+    cout << "->" << __LINE__ << endl;
 
     // Multiply by learning rate
     Plaintext lr_pt;
     ckks_encoder.encode(learning_rate, lr_pt);
     evaluator.multiply_plain_inplace(gradient, lr_pt);
+    cout << "->" << __LINE__ << endl;
 
     // Subtract from weights
     Ciphertext new_weights;
     evaluator.sub(gradient, weights, new_weights);
     evaluator.negate_inplace(new_weights);
+    cout << "->" << __LINE__ << endl;
 
     return new_weights;
 }
 
-Ciphertext train_cipher(vector<Ciphertext> features_diagonals, Ciphertext labels, Ciphertext weights, float learning_rate, int iters, vector<Plaintext> U_transpose, int observations, int num_weights, Evaluator &evaluator, CKKSEncoder &ckks_encoder, GaloisKeys gal_keys, RelinKeys relin_keys, Encryptor &encryptor, double scale)
+Ciphertext train_cipher(vector<Ciphertext> features_diagonals, vector<Ciphertext> features_T_diagonals, Ciphertext labels, Ciphertext weights, float learning_rate, int iters, int observations, int num_weights, Evaluator &evaluator, CKKSEncoder &ckks_encoder, GaloisKeys gal_keys, RelinKeys relin_keys, Encryptor &encryptor, double scale)
 {
+    cout << "->" << __func__ << endl;
+    cout << "->" << __LINE__ << endl;
 
     // Copy weights to new_weights
     Ciphertext new_weights = weights;
@@ -834,12 +839,12 @@ Ciphertext train_cipher(vector<Ciphertext> features_diagonals, Ciphertext labels
     for (int i = 0; i < iters; i++)
     {
         // Get new weights
-        new_weights = update_weights(features_diagonals, labels, new_weights, learning_rate, U_transpose, observations, num_weights, evaluator, ckks_encoder, gal_keys, relin_keys, encryptor, scale);
+        new_weights = update_weights(features_diagonals, features_T_diagonals, labels, new_weights, learning_rate, observations, num_weights, evaluator, ckks_encoder, gal_keys, relin_keys, encryptor, scale);
 
         // Get cost ????
 
         // Log Progress
-        if (i % 100 == 0)
+        if (i % 5 == 0)
         {
             cout << "Iteration:\t" << i << endl;
         }
@@ -850,6 +855,7 @@ Ciphertext train_cipher(vector<Ciphertext> features_diagonals, Ciphertext labels
 
 double sigmoid_approx_three(double x)
 {
+    cout << "->" << __func__ << endl;
     double res = 0.5 + (1.20096 * (x / 8)) - (0.81562 * (pow((x / 8), 3)));
     return res;
 }
@@ -964,6 +970,26 @@ vector<vector<double>> standard_scaler(vector<vector<double>> input_matrix)
     return result_matrix;
 }
 
+// Matrix Transpose
+template <typename T>
+vector<vector<T>> transpose_matrix(vector<vector<T>> input_matrix)
+{
+
+    int rowSize = input_matrix.size();
+    int colSize = input_matrix[0].size();
+    vector<vector<T>> transposed(colSize, vector<T>(rowSize));
+
+    for (int i = 0; i < rowSize; i++)
+    {
+        for (int j = 0; j < colSize; j++)
+        {
+            transposed[j][i] = input_matrix[i][j];
+        }
+    }
+
+    return transposed;
+}
+
 float RandomFloat(float a, float b)
 {
     float random = ((float)rand()) / (float)RAND_MAX;
@@ -1063,28 +1089,28 @@ int main()
     vector<vector<string>> s_matrix = CSVtoMatrix(filename);
     vector<vector<double>> f_matrix = stringToDoubleMatrix(s_matrix);
 
-    // Test print first 10 rows
-    cout << "First 10 rows of CSV file --------\n"
-         << endl;
-    for (int i = 0; i < 10; i++)
-    {
-        for (int j = 0; j < f_matrix[0].size(); j++)
-        {
-            cout << f_matrix[i][j] << ", ";
-        }
-        cout << endl;
-    }
-    cout << "...........\nLast 10 rows of CSV file ----------\n"
-         << endl;
-    // Test print last 10 rows
-    for (int i = f_matrix.size() - 10; i < f_matrix.size(); i++)
-    {
-        for (int j = 0; j < f_matrix[0].size(); j++)
-        {
-            cout << f_matrix[i][j] << ", ";
-        }
-        cout << endl;
-    }
+    // // Test print first 10 rows
+    // cout << "First 10 rows of CSV file --------\n"
+    //      << endl;
+    // for (int i = 0; i < 10; i++)
+    // {
+    //     for (int j = 0; j < f_matrix[0].size(); j++)
+    //     {
+    //         cout << f_matrix[i][j] << ", ";
+    //     }
+    //     cout << endl;
+    // }
+    // cout << "...........\nLast 10 rows of CSV file ----------\n"
+    //      << endl;
+    // // Test print last 10 rows
+    // for (int i = f_matrix.size() - 10; i < f_matrix.size(); i++)
+    // {
+    //     for (int j = 0; j < f_matrix[0].size(); j++)
+    //     {
+    //         cout << f_matrix[i][j] << ", ";
+    //     }
+    //     cout << endl;
+    // }
 
     // Init features, labels and weights
     // Init features (rows of f_matrix , cols of f_matrix - 1)
@@ -1127,14 +1153,14 @@ int main()
     cout << "Labels row size = " << labels.size() << endl;
     cout << "Weights row size = " << weights.size() << endl;
 
-    for (int i = 0; i < 10; i++)
-    {
-        for (int j = 0; j < features[0].size(); j++)
-        {
-            cout << features[i][j] << ", ";
-        }
-        cout << endl;
-    }
+    // for (int i = 0; i < 10; i++)
+    // {
+    //     for (int j = 0; j < features[0].size(); j++)
+    //     {
+    //         cout << features[i][j] << ", ";
+    //     }
+    //     cout << endl;
+    // }
 
     // Standardize the features
     cout << "\nSTANDARDIZE TEST---------\n"
@@ -1142,35 +1168,35 @@ int main()
 
     vector<vector<double>> standard_features = standard_scaler(features);
 
-    // Test print first 10 rows
-    for (int i = 0; i < 10; i++)
-    {
-        for (int j = 0; j < cols; j++)
-        {
-            cout << standard_features[i][j] << ", ";
-        }
-        cout << endl;
-    }
-    cout << "..........." << endl;
-    // Test print last 10 rows
-    for (int i = rows - 10; i < rows; i++)
-    {
-        for (int j = 0; j < cols; j++)
-        {
-            cout << standard_features[i][j] << ", ";
-        }
-        cout << endl;
-    }
+    // // Test print first 10 rows
+    // for (int i = 0; i < 10; i++)
+    // {
+    //     for (int j = 0; j < cols; j++)
+    //     {
+    //         cout << standard_features[i][j] << ", ";
+    //     }
+    //     cout << endl;
+    // }
+    // cout << "..........." << endl;
+    // // Test print last 10 rows
+    // for (int i = rows - 10; i < rows; i++)
+    // {
+    //     for (int j = 0; j < cols; j++)
+    //     {
+    //         cout << standard_features[i][j] << ", ";
+    //     }
+    //     cout << endl;
+    // }
 
-    cout << "\nTesting labels\n--------------\n"
-         << endl;
+    // cout << "\nTesting labels\n--------------\n"
+    //      << endl;
 
-    // Labels Print Test
-    for (int i = 0; i < 10; i++)
-    {
-        cout << labels[i] << ", ";
-    }
-    cout << endl;
+    // // Labels Print Test
+    // for (int i = 0; i < 10; i++)
+    // {
+    //     cout << labels[i] << ", ";
+    // }
+    // cout << endl;
 
     // Print old weights
     cout << "\nOLD WEIGHTS\n------------------"
@@ -1181,6 +1207,11 @@ int main()
     }
     cout << endl;
 
+    // Get tranpose from client
+    vector<vector<double>> features_T = transpose_matrix(features);
+    // Get diagonals of transposed matrix
+    vector<vector<double>> features_T_diagonals = get_all_diagonals(features_T);
+
     // -------------- ENCODING ----------------
     // Encode features diagonals
     vector<vector<double>> features_diagonals = get_all_diagonals(features);
@@ -1189,6 +1220,14 @@ int main()
     for (int i = 0; i < features_diagonals.size(); i++)
     {
         ckks_encoder.encode(features_diagonals[i], scale, features_diagonals_pt[i]);
+    }
+    cout << "Done" << endl;
+
+    vector<Plaintext> features_T_diagonals_pt(features_T_diagonals.size());
+    cout << "\nENCODING TRANSPOSED FEATURES DIAGONALS...";
+    for (int i = 0; i < features_T_diagonals.size(); i++)
+    {
+        ckks_encoder.encode(features_T_diagonals[i], scale, features_T_diagonals_pt[i]);
     }
     cout << "Done" << endl;
 
@@ -1214,6 +1253,14 @@ int main()
     }
     cout << "Done" << endl;
 
+    vector<Ciphertext> features_T_diagonals_ct(features_T_diagonals.size());
+    cout << "\nENCRYPTING TRANSPOSED FEATURES DIAGONALS...";
+    for (int i = 0; i < features_T_diagonals.size(); i++)
+    {
+        encryptor.encrypt(features_T_diagonals_pt[i], features_T_diagonals_ct[i]);
+    }
+    cout << "Done" << endl;
+
     // Encrypt weights
     Ciphertext weights_ct;
     cout << "\nENCRYPTING WEIGHTS...";
@@ -1226,40 +1273,20 @@ int main()
     encryptor.encrypt(labels_pt, labels_ct);
     cout << "Done" << endl;
 
-    
-
-    /*
     // --------------- TRAIN ---------------
     cout << "\nTraining--------------\n"
          << endl;
-    // tuple<vector<float>, vector<float>> training_tuple = train(standard_features, labels, weights, 0.1, 100);
 
-    Ciphertext new_weights_cipher = train_cipher(features_diagonals_cipher, labels, weights, learning_rate, ITERS, U_transpose, observations, num_weights, evaluator, ckks_encoder, gal_keys, relin_keys, encryptor, scale);
+    // Get U_tranpose
+    // vector<vector<double>> U_transpose = get_U_transpose(features);
 
-    // Print mew weights
-    cout << "\nNEW WEIGHTS\n------------------"
-         << endl;
-    for (int i = 0; i < new_weights.size(); i++)
-    {
-        cout << new_weights[i] << ", ";
-    }
-    cout << endl;
+    int observations = features.size();
+    int num_weights = features[0].size();
 
-    // Print Cost history
-    cout << "\nCOST HISTORY\n------------------"
-         << endl;
-    for (int i = 0; i < cost_history.size(); i++)
-    {
-        cout << cost_history[i] << ", ";
-        if (i % 10 == 0 && i > 0)
-        {
-            cout << "\n";
-        }
-    }
-    cout << endl;
+    // Ciphertext predictions;
+    // predictions = predict_cipher_weights(features_diagonals_ct, weights_ct, num_weights, evaluator, ckks_encoder, gal_keys, relin_keys, encryptor);
 
-    // Print Accuracy
-    cout << "\nACCURACY\n-------------------" << endl;
-    */
+    Ciphertext new_weights_cipher = train_cipher(features_diagonals_ct, features_T_diagonals_ct, labels_ct, weights_ct, LEARNING_RATE, ITERS, observations, num_weights, evaluator, ckks_encoder, gal_keys, relin_keys, encryptor, scale);
+
     return 0;
 }

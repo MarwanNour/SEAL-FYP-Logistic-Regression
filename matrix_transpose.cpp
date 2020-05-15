@@ -394,6 +394,31 @@ vector<vector<T>> transpose_matrix(vector<vector<T>> input_matrix)
     return transposed;
 }
 
+// Ciphertext dot product
+Ciphertext cipher_dot_product(Ciphertext ctA, Ciphertext ctB, int size, RelinKeys relin_keys, GaloisKeys gal_keys, Evaluator &evaluator)
+{
+    Ciphertext mult;
+
+    // Component-wise multiplication
+    evaluator.multiply(ctA, ctB, mult);
+    evaluator.relinearize_inplace(mult, relin_keys);
+    evaluator.rescale_to_next_inplace(mult);
+
+    // Fill with duplicate
+    Ciphertext zero_filled;
+    evaluator.rotate_vector(mult, -size, gal_keys, zero_filled); // vector has zeros now
+    Ciphertext dup;
+    evaluator.add(mult, zero_filled, dup); // vector has duplicate now
+
+    for (int i = 1; i < size; i++)
+    {
+        evaluator.rotate_vector_inplace(dup, 1, gal_keys);
+        evaluator.add_inplace(mult, dup);
+    }
+
+    return mult;
+}
+
 void MatrixTranspose(size_t poly_modulus_degree, int dimension)
 {
     // Handle Rotation Error First
@@ -414,6 +439,7 @@ void MatrixTranspose(size_t poly_modulus_degree, int dimension)
     PublicKey pk = keygen.public_key();
     SecretKey sk = keygen.secret_key();
     GaloisKeys gal_keys = keygen.galois_keys();
+    RelinKeys relin_keys = keygen.relin_keys();
 
     Encryptor encryptor(context, pk);
     Evaluator evaluator(context);
@@ -584,6 +610,32 @@ void MatrixTranspose(size_t poly_modulus_degree, int dimension)
     // cout << "\nDiagonals of Transposed dummy:" << endl;
     // vector<vector<double>> diag_tranposed_dummy = get_all_diagonals(tranposed_dummy);
     // print_full_matrix(diag_tranposed_dummy);
+
+    // TEST DOT PRODUCT
+    Plaintext pt_0;
+    ckks_encoder.encode(row_0, scale, pt_0);
+    Plaintext pt_1;
+    ckks_encoder.encode(row_1, scale, pt_1);
+
+    Ciphertext ct_0;
+    encryptor.encrypt(pt_0, ct_0);
+    Ciphertext ct_1;
+    encryptor.encrypt(pt_1, ct_1);
+
+    Ciphertext dot_prod_ct = cipher_dot_product(ct_0, ct_1, 4, relin_keys, gal_keys, evaluator);
+
+    Plaintext dot_prod_pt;
+    decryptor.decrypt(dot_prod_ct, dot_prod_pt);
+    vector<double> dot_prod;
+    ckks_encoder.decode(dot_prod_pt, dot_prod);
+
+    cout << "\n\n DOT PROD:" << endl;
+    for (int i = 0; i < 10; i++)
+    {
+        cout << dot_prod[i] << ", ";
+    }
+    cout << "\n"
+         << endl;
 }
 
 int main()
