@@ -397,24 +397,88 @@ vector<vector<T>> transpose_matrix(vector<vector<T>> input_matrix)
 // Ciphertext dot product
 Ciphertext cipher_dot_product(Ciphertext ctA, Ciphertext ctB, int size, RelinKeys relin_keys, GaloisKeys gal_keys, Evaluator &evaluator)
 {
+
+    // cout << "\nCTA Info:\n";
+    // cout << "\tLevel:\t" << context->get_context_data(ctA.parms_id())->chain_index() << endl;
+    // cout << "\tScale:\t" << log2(ctA.scale()) << endl;
+    // ios old_fmt(nullptr);
+    // old_fmt.copyfmt(cout);
+    // cout << fixed << setprecision(10);
+    // cout << "\tExact Scale:\t" << ctA.scale() << endl;
+    // cout.copyfmt(old_fmt);
+    // cout << "\tSize:\t" << ctA.size() << endl;
+
     Ciphertext mult;
 
     // Component-wise multiplication
     evaluator.multiply(ctA, ctB, mult);
+
+    // cout << "\nMult Info:\n";
+    // cout << "\tLevel:\t" << context->get_context_data(mult.parms_id())->chain_index() << endl;
+    // cout << "\tScale:\t" << log2(mult.scale()) << endl;
+    // cout << "\tExact Scale:\t" << mult.scale() << endl;
+    // cout << "\tSize:\t" << mult.size() << endl;
+
     evaluator.relinearize_inplace(mult, relin_keys);
     evaluator.rescale_to_next_inplace(mult);
+
+    // cout << "\nMult Info:\n";
+    // cout << "\tLevel:\t" << context->get_context_data(mult.parms_id())->chain_index() << endl;
+    // cout << "\tScale:\t" << log2(mult.scale()) << endl;
+    // ios old_fmt1(nullptr);
+    // old_fmt1.copyfmt(cout);
+    // cout << fixed << setprecision(10);
+    // cout << "\tExact Scale:\t" << mult.scale() << endl;
+    // cout.copyfmt(old_fmt1);
+    // cout << "\tSize:\t" << mult.size() << endl;
 
     // Fill with duplicate
     Ciphertext zero_filled;
     evaluator.rotate_vector(mult, -size, gal_keys, zero_filled); // vector has zeros now
+
+    // cout << "\nZero Filled Info:\n";
+    // cout << "\tLevel:\t" << context->get_context_data(zero_filled.parms_id())->chain_index() << endl;
+    // cout << "\tScale:\t" << log2(zero_filled.scale()) << endl;
+    // cout << "\tExact Scale:\t" << zero_filled.scale() << endl;
+    // cout << "\tSize:\t" << zero_filled.size() << endl;
+
     Ciphertext dup;
     evaluator.add(mult, zero_filled, dup); // vector has duplicate now
+
+    // cout << "\nDup Info:\n";
+    // cout << "\tLevel:\t" << context->get_context_data(dup.parms_id())->chain_index() << endl;
+    // cout << "\tScale:\t" << log2(dup.scale()) << endl;
+    // cout << "\tExact Scale:\t" << dup.scale() << endl;
+    // cout << "\tSize:\t" << dup.size() << endl;
 
     for (int i = 1; i < size; i++)
     {
         evaluator.rotate_vector_inplace(dup, 1, gal_keys);
         evaluator.add_inplace(mult, dup);
     }
+
+    // cout << "\nMult Info:\n";
+    // cout << "\tLevel:\t" << context->get_context_data(mult.parms_id())->chain_index() << endl;
+    // cout << "\tScale:\t" << log2(mult.scale()) << endl;
+    // ios old_fmt2(nullptr);
+    // old_fmt2.copyfmt(cout);
+    // cout << fixed << setprecision(10);
+    // cout << "\tExact Scale:\t" << mult.scale() << endl;
+    // cout.copyfmt(old_fmt2);
+    // cout << "\tSize:\t" << mult.size() << endl;
+
+    // Manual Rescale
+    mult.scale() = pow(2, (int)log2(mult.scale()));
+
+    // cout << "\nMult Info:\n";
+    // cout << "\tLevel:\t" << context->get_context_data(mult.parms_id())->chain_index() << endl;
+    // cout << "\tScale:\t" << log2(mult.scale()) << endl;
+    // ios old_fmt3(nullptr);
+    // old_fmt3.copyfmt(cout);
+    // cout << fixed << setprecision(10);
+    // cout << "\tExact Scale:\t" << mult.scale() << endl;
+    // cout.copyfmt(old_fmt3);
+    // cout << "\tSize:\t" << mult.size() << endl;
 
     return mult;
 }

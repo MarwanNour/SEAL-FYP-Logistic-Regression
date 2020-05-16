@@ -689,6 +689,9 @@ Ciphertext cipher_dot_product(Ciphertext ctA, Ciphertext ctB, int size, RelinKey
         evaluator.add_inplace(mult, dup);
     }
 
+    // Manual Rescale
+    mult.scale() = pow(2, (int)log2(mult.scale()));
+
     return mult;
 }
 
@@ -761,7 +764,7 @@ Ciphertext predict_cipher_weights(vector<Ciphertext> features, Ciphertext weight
     // Linear Transformation (loop over rows and dot product)
     int num_rows = features.size();
     vector<Ciphertext> results(num_rows);
-    
+
     for (int i = 0; i < num_rows; i++)
     {
         // Dot Product
@@ -771,15 +774,21 @@ Ciphertext predict_cipher_weights(vector<Ciphertext> features, Ciphertext weight
         mask_vec[i] = 1;
         Plaintext mask_pt;
         ckks_encoder.encode(mask_vec, scale, mask_pt);
+        // Bring down mask by 1 level
+        evaluator.mod_switch_to_next_inplace(mask_pt);
         // Multiply result with mask
         evaluator.multiply_plain_inplace(results[i], mask_pt);
+        // Relin
+        evaluator.relinearize_inplace(results[i], relin_keys); 
         // Rescale
         evaluator.rescale_to_next_inplace(results[i]);
+        // Manual Rescale
+        results[i].scale() = pow(2, (int)log2(results[i].scale()));
     }
     // Add all results to ciphertext vec
     Ciphertext lintransf_vec;
     evaluator.add_many(results, lintransf_vec);
-    
+
     // Sigmoid over result
     vector<double> coeffs = {0.5, 1.20069, 0, -0.81562};
 
@@ -788,42 +797,65 @@ Ciphertext predict_cipher_weights(vector<Ciphertext> features, Ciphertext weight
     return predict_res;
 }
 
-Ciphertext update_weights(vector<Ciphertext> features_diagonals, vector<Ciphertext> features_T_diagonals, Ciphertext labels, Ciphertext weights, float learning_rate, int observations, int num_weights, Evaluator &evaluator, CKKSEncoder &ckks_encoder, GaloisKeys gal_keys, RelinKeys relin_keys, Encryptor &encryptor, double scale)
+Ciphertext update_weights(vector<Ciphertext> features, vector<Ciphertext> features_T, Ciphertext labels, Ciphertext weights, float learning_rate, Evaluator &evaluator, CKKSEncoder &ckks_encoder, GaloisKeys gal_keys, RelinKeys relin_keys, Encryptor &encryptor, double scale)
 {
-    cout << "->" << __func__ << endl;
-    cout << "->" << __LINE__ << endl;
+
+    int num_observations = features.size();
+    int num_weights = features_T.size();
+
+    cout << "num obs = " << num_observations << endl;
+    cout << "num weights = " << num_weights << endl;
+
+    // cout << "->" << __func__ << endl;
+    // cout << "->" << __LINE__ << endl;
 
     // Get predictions
-    Ciphertext predictions;
-    // predictions = predict_cipher_weights(features_diagonals, weights, num_weights, evaluator, ckks_encoder, gal_keys, relin_keys, encryptor);
-    cout << "->" << __LINE__ << endl;
+    Ciphertext predictions = predict_cipher_weights(features, weights, num_weights, scale, evaluator, ckks_encoder, gal_keys, relin_keys, encryptor);
+
+    // cout << "->" << __LINE__ << endl;
 
     // Calculate Predictions - Labels
     Ciphertext pred_labels;
-    evaluator.sub(predictions, labels, pred_labels); // DEBUG !!!!!!!
-    cout << "->" << __LINE__ << endl;
+    evaluator.sub(predictions, labels, pred_labels);
 
-    // Calculate Gradient vector
-    Ciphertext gradient = Linear_Transform_Cipher(pred_labels, features_T_diagonals, gal_keys, evaluator);
+    // cout << "->" << __LINE__ << endl;
 
-    // Divide by N = 1/observations -> multiply by N_pt
-    int N = 1 / observations;
+    // Calculate Gradient vector (loop over rows and dot product)
+
+    vector<Ciphertext> gradient_results(num_weights);
+    for (int i = 0; i < num_weights; i++)
+    {
+        gradient_results[i] = cipher_dot_product(features_T[i], pred_labels, num_observations, relin_keys, gal_keys, evaluator);
+
+        // Create mask
+        vector<double> mask_vec(num_weights, 0);
+        mask_vec[i] = 1;
+        Plaintext mask_pt;
+        ckks_encoder.encode(mask_vec, scale, mask_pt);
+        // Multiply result with mask
+        evaluator.multiply_plain_inplace(gradient_results[i], mask_pt);
+        // Rescale
+        evaluator.rescale_to_next_inplace(gradient_results[i]);
+    }
+    // Add all gradient results to gradient
+    Ciphertext gradient;
+    evaluator.add_many(gradient_results, gradient);
+
+    // Multiply by learning_rate/observations
+    double N = learning_rate / num_observations;
+
+    cout << "LR / num_obs = " << N << endl;
+
     Plaintext N_pt;
     ckks_encoder.encode(N, N_pt);
     evaluator.multiply_plain_inplace(gradient, N_pt);
-    cout << "->" << __LINE__ << endl;
-
-    // Multiply by learning rate
-    Plaintext lr_pt;
-    ckks_encoder.encode(learning_rate, lr_pt);
-    evaluator.multiply_plain_inplace(gradient, lr_pt);
-    cout << "->" << __LINE__ << endl;
+    // cout << "->" << __LINE__ << endl;
 
     // Subtract from weights
     Ciphertext new_weights;
     evaluator.sub(gradient, weights, new_weights);
     evaluator.negate_inplace(new_weights);
-    cout << "->" << __LINE__ << endl;
+    // cout << "->" << __LINE__ << endl;
 
     return new_weights;
 }
@@ -839,7 +871,7 @@ Ciphertext train_cipher(vector<Ciphertext> features_diagonals, vector<Ciphertext
     for (int i = 0; i < iters; i++)
     {
         // Get new weights
-        new_weights = update_weights(features_diagonals, features_T_diagonals, labels, new_weights, learning_rate, observations, num_weights, evaluator, ckks_encoder, gal_keys, relin_keys, encryptor, scale);
+        // new_weights = update_weights(features_diagonals, features_T_diagonals, labels, new_weights, learning_rate, observations, num_weights, evaluator, ckks_encoder, gal_keys, relin_keys, encryptor, scale);
 
         // Get cost ????
 
