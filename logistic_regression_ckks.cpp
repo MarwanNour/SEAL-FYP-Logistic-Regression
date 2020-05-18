@@ -739,9 +739,13 @@ Ciphertext cipher_dot_product(Ciphertext ctA, Ciphertext ctB, int size, RelinKey
     return mult;
 }
 
-Ciphertext Horner_sigmoid_approx(Ciphertext ctx, int degree, vector<double> coeffs, CKKSEncoder &ckks_encoder, Evaluator &evaluator, Encryptor &encryptor, RelinKeys relin_keys, EncryptionParameters params)
+Ciphertext Horner_sigmoid_approx(Ciphertext ctx, int degree, vector<double> coeffs, CKKSEncoder &ckks_encoder, double scale, Evaluator &evaluator, Encryptor &encryptor, RelinKeys relin_keys, EncryptionParameters params)
 {
     auto context = SEALContext::Create(params);
+
+    cout << "->" << __func__ << endl;
+    cout << "->" << __LINE__ << endl;
+
     cout << "\nCTx Info:\n";
     cout << "\tLevel:\t" << context->get_context_data(ctx.parms_id())->chain_index() << endl;
     cout << "\tScale:\t" << log2(ctx.scale()) << endl;
@@ -751,15 +755,6 @@ Ciphertext Horner_sigmoid_approx(Ciphertext ctx, int degree, vector<double> coef
     cout << "\tExact Scale:\t" << ctx.scale() << endl;
     cout.copyfmt(old_fmt);
     cout << "\tSize:\t" << ctx.size() << endl;
-
-    // cout << "->" << __func__ << endl;
-    // cout << "->" << __LINE__ << endl;
-
-    vector<int> moduli(degree + 4, 40);
-    moduli[0] = 50;
-    moduli[moduli.size() - 1] = 59;
-
-    double scale = pow(2.0, 40);
 
     vector<Plaintext> plain_coeffs(degree + 1);
 
@@ -787,8 +782,36 @@ Ciphertext Horner_sigmoid_approx(Ciphertext ctx, int degree, vector<double> coef
     for (int i = degree - 1; i >= 0; i--)
     {
         // cout << "->" << __LINE__ << endl;
+        // cout << "\nCTx Info:\n";
+        // cout << "\tLevel:\t" << context->get_context_data(ctx.parms_id())->chain_index() << endl;
+        // cout << "\tScale:\t" << log2(ctx.scale()) << endl;
+        // ios old_fmt1(nullptr);
+        // old_fmt1.copyfmt(cout);
+        // cout << fixed << setprecision(10);
+        // cout << "\tExact Scale:\t" << ctx.scale() << endl;
+        // cout.copyfmt(old_fmt1);
+        // cout << "\tSize:\t" << ctx.size() << endl;
 
-        evaluator.mod_switch_to_inplace(ctx, temp.parms_id());
+        // cout << "\ntemp Info:\n";
+        // cout << "\tLevel:\t" << context->get_context_data(temp.parms_id())->chain_index() << endl;
+        // cout << "\tScale:\t" << log2(temp.scale()) << endl;
+        // ios old_fmt2(nullptr);
+        // old_fmt2.copyfmt(cout);
+        // cout << fixed << setprecision(10);
+        // cout << "\tExact Scale:\t" << temp.scale() << endl;
+        // cout.copyfmt(old_fmt2);
+        // cout << "\tSize:\t" << temp.size() << endl;
+
+        int ctx_level = context->get_context_data(ctx.parms_id())->chain_index();
+        int temp_level = context->get_context_data(temp.parms_id())->chain_index();
+        if (ctx_level > temp_level)
+        {
+            evaluator.mod_switch_to_inplace(ctx, temp.parms_id());
+        }
+        else if (ctx_level < temp_level)
+        {
+            evaluator.mod_switch_to_inplace(temp, ctx.parms_id());
+        }
         evaluator.multiply_inplace(temp, ctx);
         // cout << "->" << __LINE__ << endl;
 
@@ -823,8 +846,8 @@ Ciphertext Horner_sigmoid_approx(Ciphertext ctx, int degree, vector<double> coef
 // Predict Ciphertext Weights
 Ciphertext predict_cipher_weights(vector<Ciphertext> features, Ciphertext weights, int num_weights, double scale, Evaluator &evaluator, CKKSEncoder &ckks_encoder, GaloisKeys gal_keys, RelinKeys relin_keys, Encryptor &encryptor, EncryptionParameters params)
 {
-    // cout << "->" << __func__ << endl;
-    // cout << "->" << __LINE__ << endl;
+    cout << "->" << __func__ << endl;
+    cout << "->" << __LINE__ << endl;
 
     // Linear Transformation (loop over rows and dot product)
     int num_rows = features.size();
@@ -854,7 +877,7 @@ Ciphertext predict_cipher_weights(vector<Ciphertext> features, Ciphertext weight
     // Add all results to ciphertext vec
     Ciphertext lintransf_vec;
     evaluator.add_many(results, lintransf_vec);
-
+    cout << "->" << __LINE__ << endl;
     // MAYBE RELIN, RESCALE AND MANUAL RESCALE AFTER LOOP ????? ---------------------
     // Relin
     evaluator.relinearize_inplace(lintransf_vec, relin_keys);
@@ -862,17 +885,37 @@ Ciphertext predict_cipher_weights(vector<Ciphertext> features, Ciphertext weight
     evaluator.rescale_to_next_inplace(lintransf_vec);
     // Manual Rescale
     lintransf_vec.scale() = pow(2, (int)log2(lintransf_vec.scale()));
-
+    cout << "->" << __LINE__ << endl;
     // Sigmoid over result
-    vector<double> coeffs = {0.5, 1.20069, 0, -0.81562};
+    vector<double> coeffs;
+    if (DEGREE == 3)
+    {
+        coeffs = {0.5, 1.20069, 0.00001, -0.81562};
+    }
+    else if (DEGREE == 5)
+    {
+        coeffs = {0.5, 1.53048, 0.00001, -2.3533056, 0.00001, 1.3511295};
+    }
+    else if (DEGREE == 7)
+    {
+        coeffs = {0.5, 1.73496, 0.00001, -4.19407, 0.00001, 5.43402, 0.00001, -2.50739};
+    }
+    else
+    {
+        cerr << "Invalid DEGREE" << endl;
+        exit(EXIT_SUCCESS);
+    }
 
-    Ciphertext predict_res = Horner_sigmoid_approx(lintransf_vec, coeffs.size() + 1, coeffs, ckks_encoder, evaluator, encryptor, relin_keys, params);
-
+    Ciphertext predict_res = Horner_sigmoid_approx(lintransf_vec, coeffs.size() - 1, coeffs, ckks_encoder, scale, evaluator, encryptor, relin_keys, params);
+    cout << "->" << __LINE__ << endl;
     return predict_res;
 }
 
 Ciphertext update_weights(vector<Ciphertext> features, vector<Ciphertext> features_T, Ciphertext labels, Ciphertext weights, float learning_rate, Evaluator &evaluator, CKKSEncoder &ckks_encoder, GaloisKeys gal_keys, RelinKeys relin_keys, Encryptor &encryptor, double scale, EncryptionParameters params)
 {
+
+    cout << "->" << __func__ << endl;
+    cout << "->" << __LINE__ << endl;
 
     int num_observations = features.size();
     int num_weights = features_T.size();
@@ -995,7 +1038,26 @@ Ciphertext train_cipher(vector<Ciphertext> features, vector<Ciphertext> features
 double sigmoid_approx_three(double x)
 {
     cout << "->" << __func__ << endl;
-    double res = 0.5 + (1.20096 * (x / 8)) - (0.81562 * (pow((x / 8), 3)));
+    cout << "->" << __LINE__ << endl;
+
+    double res;
+    if (DEGREE == 3)
+    {
+        res = 0.5 + (1.20096 * (x / 8)) - (0.81562 * (pow((x / 8), 3)));
+    }
+    else if (DEGREE == 5)
+    {
+        res = 0.5 + (1.53048 * (x / 8)) - (2.3533056 * (pow((x / 8), 3))) + (1.3511295 * (pow((x / 8), 5)));
+    }
+    else if (DEGREE == 7)
+    {
+        res = 0.5 + (1.73496 * (x / 8)) - (4.19407 * (pow((x / 8), 3))) + (5.43402 * (pow((x / 8), 5))) - (2.50739 * (pow((x / 8), 3)));
+    }
+    else
+    {
+        cerr << "Invalid DEGREE" << endl;
+        exit(EXIT_SUCCESS);
+    }
     return res;
 }
 
@@ -1199,6 +1261,11 @@ int main()
     {
         coeffs = {0.5, 1.73496, 0.00001, -4.19407, 0.00001, 5.43402, 0.00001, -2.50739};
     }
+    else
+    {
+        cerr << "Invalid DEGREE" << endl;
+        exit(EXIT_SUCCESS);
+    }
 
     // Multiply x by 1/8
     double eight = 1 / 8;
@@ -1211,7 +1278,7 @@ int main()
     time_start = chrono::high_resolution_clock::now();
 
     // Ciphertext ct_res_sigmoid = Tree_sigmoid_approx(ctx, DEGREE, scale, coeffs, ckks_encoder, evaluator, encryptor, relin_keys, params);
-    Ciphertext ct_res_sigmoid = Horner_sigmoid_approx(ctx, DEGREE, coeffs, ckks_encoder, evaluator, encryptor, relin_keys, params);
+    Ciphertext ct_res_sigmoid = Horner_sigmoid_approx(ctx, DEGREE, coeffs, ckks_encoder, scale, evaluator, encryptor, relin_keys, params);
     time_end = chrono::high_resolution_clock::now();
     time_diff = chrono::duration_cast<chrono::microseconds>(time_end - time_start);
     cout << "Polynomial Evaluation Duration:\t" << time_diff.count() << " microseconds" << endl;
@@ -1228,15 +1295,15 @@ int main()
     // Get expected approximate result
     double expected_approx_res = sigmoid_approx_three(x);
 
-    cout << "Actual Approximate Result =\t" << res_sigmoid_vec[0] << endl;
-    cout << "Expected Approximate Result =\t" << expected_approx_res << endl;
-    cout << "True Result =\t\t\t" << expected_approx_res << endl;
+    cout << "Actual Approximate Result =\t\t" << res_sigmoid_vec[0] << endl;
+    cout << "Expected Approximate Result =\t\t" << expected_approx_res << endl;
+    cout << "True Result =\t\t\t\t" << true_expected_res << endl;
 
     double difference = abs(res_sigmoid_vec[0] - true_expected_res);
-    cout << "Diff Actual and True =\t\t" << difference << endl;
+    cout << "Approx. Error: Diff Actual and True =\t" << difference << endl;
 
     double horner_error = abs(res_sigmoid_vec[0] - expected_approx_res);
-    cout << "Diff Actual and Expected =\t" << horner_error << endl;
+    cout << "CKKS Error: Diff Actual and Expected =\t" << horner_error << endl;
 
     // --------------------------- TEST LR -----------------------------------------
     cout << "\n--------------------------- TEST LR ---------------------------\n"
@@ -1440,8 +1507,9 @@ int main()
     int observations = features.size();
     int num_weights = features[0].size();
 
-    // Ciphertext predictions;
+    Ciphertext predictions;
     // predictions = predict_cipher_weights(features_diagonals_ct, weights_ct, num_weights, evaluator, ckks_encoder, gal_keys, relin_keys, encryptor);
+    // predictions = predict_cipher_weights(features_ct, weights_ct, num_weights, scale, evaluator, ckks_encoder, gal_keys, relin_keys, encryptor, params);
 
     return 0;
 }
