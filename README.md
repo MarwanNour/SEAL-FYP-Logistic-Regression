@@ -51,15 +51,11 @@ The drawing below shows an example of linear transformation with a 4x4 matrix:
 
 It is also possible to perform linear transformation on rectangular matrices using a hybrid approach proposed in in the paper “GAZELLE: A Low Latency Framework For Secure Neural Network Inference". However I have implemented another way of doing it illustrated below:
 
-
-![Other Linear Transformation Img](imgs/other_lin_transf.jpg?raw=true "Pther Linear Transformation Method")
-
+<img src="imgs/other_lin_transf.jpg" width=75%>
 
 The dot products are computed as follows:
 
-
-![Dot Product Img](imgs/dot_prod.jpg?raw=true "Dot Product")
-
+<img src="imgs/dot_prod.jpg" width=75%>
 
 ### Matrix Multiplication
 The `matrix_multiplication.cpp` file includes an implementation of the homomorphic matrix multiplication algorithm in the paper: https://eprint.iacr.org/2018/1041.pdf .
@@ -128,7 +124,7 @@ The polynomial approximation of the sigmoid function can be evaluated with the p
 
 The protocol of the LR-CKKS works as follows:
 
-![Protocol Img](imgs/fyp_prot.jpg?raw=true "Protocol")
+<img src="imgs/fyp_prot.jpg" width=75%>
 
 In theory, using higher degree polynomials for approximating the sigmoid function is better however this would require a lot of rescaling which would lead to losing a lot of precision bits. **In order to get the best precision and performance, I used the degree 3 polynomial with Horner's method.**
 
