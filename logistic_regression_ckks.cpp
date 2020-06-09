@@ -30,20 +30,9 @@ vector<T> rotate_vec(vector<T> input_vec, int num_rotations)
     return rotated_res;
 }
 
-// Sigmoid
-float sigmoid(float z)
+void print_Ciphertext_Info(string ctx_name, Ciphertext ctx, shared_ptr<SEALContext> context)
 {
-    return 1 / (1 + exp(-z));
-}
-
-// Degree 3 Polynomial approximation of sigmoid function
-Ciphertext Tree_sigmoid_approx(Ciphertext ctx, int degree, double scale, vector<double> coeffs, CKKSEncoder &ckks_encoder, Evaluator &evaluator, Encryptor &encryptor, RelinKeys relin_keys, EncryptionParameters params)
-{
-    cout << "->" << __func__ << endl;
-
-    auto context = SEALContext::Create(params);
-
-    cout << "\nCTx Info:\n";
+    cout << "\n" << ctx_name << " Info:" << endl;
     cout << "\tLevel:\t" << context->get_context_data(ctx.parms_id())->chain_index() << endl;
     cout << "\tScale:\t" << log2(ctx.scale()) << endl;
     ios old_fmt(nullptr);
@@ -52,12 +41,28 @@ Ciphertext Tree_sigmoid_approx(Ciphertext ctx, int degree, double scale, vector<
     cout << "\tExact Scale:\t" << ctx.scale() << endl;
     cout.copyfmt(old_fmt);
     cout << "\tSize:\t" << ctx.size() << endl;
+}
+
+// Sigmoid
+float sigmoid(float z)
+{
+    return 1 / (1 + exp(-z));
+}
+
+// Tree Method
+Ciphertext Tree_sigmoid_approx(Ciphertext ctx, int degree, double scale, vector<double> coeffs, CKKSEncoder &ckks_encoder, Evaluator &evaluator, Encryptor &encryptor, RelinKeys relin_keys, EncryptionParameters params)
+{
+    cout << "->" << __func__ << endl;
+
+    auto context = SEALContext::Create(params);
+
+    // Print Ciphertext Information
+    print_Ciphertext_Info("CTX", ctx, context);
 
     int depth = ceil(log2(degree));
 
-    // vector<double> coeffs(degree + 1);
+    // Form the polynomial
     vector<Plaintext> plain_coeffs(degree + 1);
-
     cout << "Polynomial = ";
     int counter = 0;
     for (size_t i = 0; i < degree + 1; i++)
@@ -81,36 +86,22 @@ Ciphertext Tree_sigmoid_approx(Ciphertext ctx, int degree, double scale, vector<
 
     // Compute all powers
     vector<Ciphertext> powers(degree + 1);
-
-    // cout << "-> " << __LINE__ << endl;
-
     compute_all_powers(ctx, degree, evaluator, relin_keys, powers);
     cout << "All powers computed " << endl;
 
-    cout << "\nCTx Info:\n";
-    cout << "\tLevel:\t" << context->get_context_data(ctx.parms_id())->chain_index() << endl;
-    cout << "\tScale:\t" << log2(ctx.scale()) << endl;
-    ios old_fmt1(nullptr);
-    old_fmt1.copyfmt(cout);
-    cout << fixed << setprecision(10);
-    cout << "\tExact Scale:\t" << ctx.scale() << endl;
-    cout.copyfmt(old_fmt1);
-    cout << "\tSize:\t" << ctx.size() << endl;
+    // Print Ciphertext Information
+    cout << "\nCTx Info:" << endl;
+    print_Ciphertext_Info("CTX", ctx, context);
 
+    // Encrypt First Coefficient
     Ciphertext enc_result;
     cout << "Encrypt first coeff...";
     encryptor.encrypt(plain_coeffs[0], enc_result);
     cout << "Done" << endl;
 
-    cout << "\nenc_result Info:\n";
-    cout << "\tLevel:\t" << context->get_context_data(enc_result.parms_id())->chain_index() << endl;
-    cout << "\tScale:\t" << log2(enc_result.scale()) << endl;
-    ios old_fmt2(nullptr);
-    old_fmt2.copyfmt(cout);
-    cout << fixed << setprecision(10);
-    cout << "\tExact Scale:\t" << enc_result.scale() << endl;
-    cout.copyfmt(old_fmt2);
-    cout << "\tSize:\t" << enc_result.size() << endl;
+    // Print Ciphertext Information
+    cout << "\nenc_result Info:" << endl;
+    print_Ciphertext_Info("enc_result", enc_result, context);
 
     Ciphertext temp;
 
@@ -137,28 +128,10 @@ Ciphertext Tree_sigmoid_approx(Ciphertext ctx, int degree, double scale, vector<
 
         evaluator.add_inplace(enc_result, temp);
     }
-    // cout << "-> " << __LINE__ << endl;
 
-    // // Compute Expected result
-    // for (int i = degree - 1; i >= 0; i--)
-    // {
-    //     expected_result *= x;
-    //     expected_result += coeffs[i];
-    // }
-
-    // decryptor.decrypt(enc_result, plain_result);
-    // ckks_encoder.decode(plain_result, result);
-
-    // cout << "Actual : " << result[0] << "\nExpected : " << expected_result << "\ndiff : " << abs(result[0] - expected_result) << endl;
-    cout << "\nenc_result Info:\n";
-    cout << "\tLevel:\t" << context->get_context_data(enc_result.parms_id())->chain_index() << endl;
-    cout << "\tScale:\t" << log2(enc_result.scale()) << endl;
-    ios old_fmt3(nullptr);
-    old_fmt3.copyfmt(cout);
-    cout << fixed << setprecision(10);
-    cout << "\tExact Scale:\t" << enc_result.scale() << endl;
-    cout.copyfmt(old_fmt3);
-    cout << "\tSize:\t" << enc_result.size() << endl;
+    // Print Ciphertext Information
+    cout << "\nenc_result Info:" << endl;
+    print_Ciphertext_Info("enc_result", enc_result, context);
 
     return enc_result;
 }
@@ -170,15 +143,8 @@ Ciphertext Horner_sigmoid_approx(Ciphertext ctx, int degree, vector<double> coef
     cout << "->" << __func__ << endl;
     cout << "->" << __LINE__ << endl;
 
-    cout << "\nCTx Info:\n";
-    cout << "\tLevel:\t" << context->get_context_data(ctx.parms_id())->chain_index() << endl;
-    cout << "\tScale:\t" << log2(ctx.scale()) << endl;
-    ios old_fmt(nullptr);
-    old_fmt.copyfmt(cout);
-    cout << fixed << setprecision(10);
-    cout << "\tExact Scale:\t" << ctx.scale() << endl;
-    cout.copyfmt(old_fmt);
-    cout << "\tSize:\t" << ctx.size() << endl;
+    cout << "\nCTx Info:" << endl;
+    print_Ciphertext_Info("CTX", ctx, context);
 
     vector<Plaintext> plain_coeffs(degree + 1);
 
@@ -205,27 +171,6 @@ Ciphertext Horner_sigmoid_approx(Ciphertext ctx, int degree, vector<double> coef
 
     for (int i = degree - 1; i >= 0; i--)
     {
-        // cout << "->" << __LINE__ << endl;
-        // cout << "\nCTx Info:\n";
-        // cout << "\tLevel:\t" << context->get_context_data(ctx.parms_id())->chain_index() << endl;
-        // cout << "\tScale:\t" << log2(ctx.scale()) << endl;
-        // ios old_fmt1(nullptr);
-        // old_fmt1.copyfmt(cout);
-        // cout << fixed << setprecision(10);
-        // cout << "\tExact Scale:\t" << ctx.scale() << endl;
-        // cout.copyfmt(old_fmt1);
-        // cout << "\tSize:\t" << ctx.size() << endl;
-
-        // cout << "\ntemp Info:\n";
-        // cout << "\tLevel:\t" << context->get_context_data(temp.parms_id())->chain_index() << endl;
-        // cout << "\tScale:\t" << log2(temp.scale()) << endl;
-        // ios old_fmt2(nullptr);
-        // old_fmt2.copyfmt(cout);
-        // cout << fixed << setprecision(10);
-        // cout << "\tExact Scale:\t" << temp.scale() << endl;
-        // cout.copyfmt(old_fmt2);
-        // cout << "\tSize:\t" << temp.size() << endl;
-
         int ctx_level = context->get_context_data(ctx.parms_id())->chain_index();
         int temp_level = context->get_context_data(temp.parms_id())->chain_index();
         if (ctx_level > temp_level)
@@ -254,15 +199,8 @@ Ciphertext Horner_sigmoid_approx(Ciphertext ctx, int degree, vector<double> coef
     }
     // cout << "->" << __LINE__ << endl;
 
-    cout << "\ntemp Info:\n";
-    cout << "\tLevel:\t" << context->get_context_data(temp.parms_id())->chain_index() << endl;
-    cout << "\tScale:\t" << log2(temp.scale()) << endl;
-    ios old_fmt1(nullptr);
-    old_fmt1.copyfmt(cout);
-    cout << fixed << setprecision(10);
-    cout << "\tExact Scale:\t" << temp.scale() << endl;
-    cout.copyfmt(old_fmt1);
-    cout << "\tSize:\t" << temp.size() << endl;
+    cout << "\ntemp Info:" << endl;
+    print_Ciphertext_Info("temp", temp, context);
 
     return temp;
 }
@@ -290,19 +228,12 @@ Ciphertext predict_cipher_weights(vector<Ciphertext> features, Ciphertext weight
         evaluator.mod_switch_to_next_inplace(mask_pt);
         // Multiply result with mask
         evaluator.multiply_plain_inplace(results[i], mask_pt);
-        // MAYBE RELIN, RESCALE AND MANUAL RESCALE AFTER LOOP ????? ---------------------
-        // // Relin
-        // evaluator.relinearize_inplace(results[i], relin_keys);
-        // // Rescale
-        // evaluator.rescale_to_next_inplace(results[i]);
-        // // Manual Rescale
-        // results[i].scale() = pow(2, (int)log2(results[i].scale()));
     }
     // Add all results to ciphertext vec
     Ciphertext lintransf_vec;
     evaluator.add_many(results, lintransf_vec);
     cout << "->" << __LINE__ << endl;
-    // MAYBE RELIN, RESCALE AND MANUAL RESCALE AFTER LOOP ????? ---------------------
+
     // Relin
     evaluator.relinearize_inplace(lintransf_vec, relin_keys);
     // Rescale
@@ -327,7 +258,7 @@ Ciphertext predict_cipher_weights(vector<Ciphertext> features, Ciphertext weight
     else
     {
         cerr << "Invalid DEGREE" << endl;
-        exit(EXIT_SUCCESS);
+        exit(EXIT_FAILURE);
     }
 
     Ciphertext predict_res = Horner_sigmoid_approx(lintransf_vec, coeffs.size() - 1, coeffs, ckks_encoder, scale, evaluator, encryptor, relin_keys, params);
@@ -335,6 +266,7 @@ Ciphertext predict_cipher_weights(vector<Ciphertext> features, Ciphertext weight
     return predict_res;
 }
 
+// Update Weights (or Gradient Descent)
 Ciphertext update_weights(vector<Ciphertext> features, vector<Ciphertext> features_T, Ciphertext labels, Ciphertext weights, float learning_rate, Evaluator &evaluator, CKKSEncoder &ckks_encoder, GaloisKeys gal_keys, RelinKeys relin_keys, Encryptor &encryptor, double scale, EncryptionParameters params)
 {
 
@@ -347,13 +279,8 @@ Ciphertext update_weights(vector<Ciphertext> features, vector<Ciphertext> featur
     cout << "num obs = " << num_observations << endl;
     cout << "num weights = " << num_weights << endl;
 
-    // cout << "->" << __func__ << endl;
-    // cout << "->" << __LINE__ << endl;
-
     // Get predictions
     Ciphertext predictions = predict_cipher_weights(features, weights, num_weights, scale, evaluator, ckks_encoder, gal_keys, relin_keys, encryptor, params);
-
-    // cout << "->" << __LINE__ << endl;
 
     // Calculate Predictions - Labels
     // Mod switch labels
@@ -361,7 +288,7 @@ Ciphertext update_weights(vector<Ciphertext> features, vector<Ciphertext> featur
     Ciphertext pred_labels;
     evaluator.sub(predictions, labels, pred_labels);
 
-    // cout << "->" << __LINE__ << endl;
+    cout << "->" << __LINE__ << endl;
 
     // Calculate Gradient vector (loop over rows and dot product)
 
@@ -377,20 +304,18 @@ Ciphertext update_weights(vector<Ciphertext> features, vector<Ciphertext> featur
         mask_vec[i] = 1;
         Plaintext mask_pt;
         ckks_encoder.encode(mask_vec, scale, mask_pt);
+
+        // Mod switch mask
+        evaluator.mod_switch_to_inplace(mask_pt, gradient_results[i].parms_id());
         // Multiply result with mask
         evaluator.multiply_plain_inplace(gradient_results[i], mask_pt);
-        // MAYBE RELIN, RESCALE AND MANUAL RESCALE AFTER LOOP ????? ---------------------
-        // // Relin
-        // evaluator.relinearize_inplace(gradient_results[i], relin_keys);
-        // // Rescale
-        // evaluator.rescale_to_next_inplace(gradient_results[i]);
-        // // Manual rescale
-        // gradient_results[i].scale() = pow(2, (int)log2(gradient_results[i].scale()));
     }
+    cout << "->" << __LINE__ << endl;
+
     // Add all gradient results to gradient
     Ciphertext gradient;
     evaluator.add_many(gradient_results, gradient);
-    // MAYBE RELIN, RESCALE AND MANUAL RESCALE AFTER LOOP ????? ---------------------
+
     // Relin
     evaluator.relinearize_inplace(gradient, relin_keys);
     // Rescale
@@ -407,18 +332,19 @@ Ciphertext update_weights(vector<Ciphertext> features, vector<Ciphertext> featur
     ckks_encoder.encode(N, N_pt);
     // Mod Switch N_pt
     evaluator.mod_switch_to_inplace(N_pt, gradient.parms_id());
-    evaluator.multiply_plain_inplace(gradient, N_pt);
-    // cout << "->" << __LINE__ << endl;
+
+    cout << "->" << __LINE__ << endl;
+    evaluator.multiply_plain_inplace(gradient, N_pt); // ERROR HERE: CIPHERTEXT IS TRANSPARENT
 
     // Subtract from weights
     Ciphertext new_weights;
     evaluator.sub(gradient, weights, new_weights);
     evaluator.negate_inplace(new_weights);
-    // cout << "->" << __LINE__ << endl;
 
     return new_weights;
 }
 
+// Train model function
 Ciphertext train_cipher(vector<Ciphertext> features, vector<Ciphertext> features_T, Ciphertext labels, Ciphertext weights, float learning_rate, int iters, int observations, int num_weights, Evaluator &evaluator, CKKSEncoder &ckks_encoder, double scale, GaloisKeys gal_keys, RelinKeys relin_keys, Encryptor &encryptor, Decryptor &decryptor, EncryptionParameters params)
 {
     cout << "->" << __func__ << endl;
@@ -429,11 +355,10 @@ Ciphertext train_cipher(vector<Ciphertext> features, vector<Ciphertext> features
 
     for (int i = 0; i < iters; i++)
     {
-
         // Get new weights
         new_weights = update_weights(features, features_T, labels, new_weights, learning_rate, evaluator, ckks_encoder, gal_keys, relin_keys, encryptor, scale, params);
 
-        // Refresh weights
+        // Refresh weights (Decrypt and Re-Encrypt)
         Plaintext new_weights_pt;
         decryptor.decrypt(new_weights, new_weights_pt);
         vector<double> new_weights_decoded;
@@ -459,6 +384,7 @@ Ciphertext train_cipher(vector<Ciphertext> features, vector<Ciphertext> features
     return new_weights;
 }
 
+// Sigmoid approximation without encryption
 double sigmoid_approx_three(double x)
 {
     cout << "->" << __func__ << endl;
@@ -491,13 +417,6 @@ int main()
     // Test evaluate sigmoid approx
     EncryptionParameters params(scheme_type::CKKS);
 
-    // int depth = ceil(log2(DEGREE));
-
-    // vector<int> moduli(depth + 4, 40);
-    // moduli[0] = 50;
-    // moduli[moduli.size() - 1] = 59;
-
-    // size_t poly_modulus_degree = 16384;
     params.set_poly_modulus_degree(POLY_MOD_DEGREE);
     params.set_coeff_modulus(CoeffModulus::Create(POLY_MOD_DEGREE, {60, 40, 40, 40, 40, 40, 40, 40, 60}));
 
@@ -550,14 +469,13 @@ int main()
     else
     {
         cerr << "Invalid DEGREE" << endl;
-        exit(EXIT_SUCCESS);
+        exit(EXIT_FAILURE);
     }
 
     // Multiply x by 1/8
     double eight = 1 / 8;
     Plaintext eight_pt;
     ckks_encoder.encode(eight, scale, eight_pt);
-    // evaluator.multiply_plain_inplace(ctx, eight_pt);
 
     chrono::high_resolution_clock::time_point time_start, time_end;
     chrono::microseconds time_diff;
@@ -600,29 +518,6 @@ int main()
     vector<vector<string>> s_matrix = CSVtoMatrix(filename);
     vector<vector<double>> f_matrix = stringToDoubleMatrix(s_matrix);
 
-    // // Test print first 10 rows
-    // cout << "First 10 rows of CSV file --------\n"
-    //      << endl;
-    // for (int i = 0; i < 10; i++)
-    // {
-    //     for (int j = 0; j < f_matrix[0].size(); j++)
-    //     {
-    //         cout << f_matrix[i][j] << ", ";
-    //     }
-    //     cout << endl;
-    // }
-    // cout << "...........\nLast 10 rows of CSV file ----------\n"
-    //      << endl;
-    // // Test print last 10 rows
-    // for (int i = f_matrix.size() - 10; i < f_matrix.size(); i++)
-    // {
-    //     for (int j = 0; j < f_matrix[0].size(); j++)
-    //     {
-    //         cout << f_matrix[i][j] << ", ";
-    //     }
-    //     cout << endl;
-    // }
-
     // Init features, labels and weights
     // Init features (rows of f_matrix , cols of f_matrix - 1)
     int rows = f_matrix.size();
@@ -663,50 +558,11 @@ int main()
     cout << "Labels row size = " << labels.size() << endl;
     cout << "Weights row size = " << weights.size() << endl;
 
-    // for (int i = 0; i < 10; i++)
-    // {
-    //     for (int j = 0; j < features[0].size(); j++)
-    //     {
-    //         cout << features[i][j] << ", ";
-    //     }
-    //     cout << endl;
-    // }
-
     // Standardize the features
     cout << "\nSTANDARDIZE TEST---------\n"
          << endl;
 
     vector<vector<double>> standard_features = standard_scaler_double(features);
-
-    // // Test print first 10 rows
-    // for (int i = 0; i < 10; i++)
-    // {
-    //     for (int j = 0; j < cols; j++)
-    //     {
-    //         cout << standard_features[i][j] << ", ";
-    //     }
-    //     cout << endl;
-    // }
-    // cout << "..........." << endl;
-    // // Test print last 10 rows
-    // for (int i = rows - 10; i < rows; i++)
-    // {
-    //     for (int j = 0; j < cols; j++)
-    //     {
-    //         cout << standard_features[i][j] << ", ";
-    //     }
-    //     cout << endl;
-    // }
-
-    // cout << "\nTesting labels\n--------------\n"
-    //      << endl;
-
-    // // Labels Print Test
-    // for (int i = 0; i < 10; i++)
-    // {
-    //     cout << labels[i] << ", ";
-    // }
-    // cout << endl;
 
     // Print old weights
     cout << "\nOLD WEIGHTS\n------------------"
@@ -719,12 +575,9 @@ int main()
 
     // Get tranpose from client
     vector<vector<double>> features_T = transpose_matrix(features);
-    // Get diagonals of transposed matrix
-    // vector<vector<double>> features_T_diagonals = get_all_diagonals(features_T);
 
     // -------------- ENCODING ----------------
-    // Encode features diagonals
-    // vector<vector<double>> features_diagonals = get_all_diagonals(features);
+    // Encode features
     vector<Plaintext> features_pt(features.size());
     cout << "\nENCODING FEATURES ...";
     for (int i = 0; i < features.size(); i++)
@@ -754,7 +607,7 @@ int main()
     cout << "Done" << endl;
 
     // -------------- ENCRYPTING ----------------
-    //Encrypt features diagonals
+    //Encrypt features
     vector<Ciphertext> features_ct(features.size());
     cout << "\nENCRYPTING FEATURES ...";
     for (int i = 0; i < features.size(); i++)
@@ -787,15 +640,14 @@ int main()
     cout << "\nTraining--------------\n"
          << endl;
 
-    // Get U_tranpose
-    // vector<vector<double>> U_transpose = get_U_transpose(features);
-
     int observations = features.size();
     int num_weights = features[0].size();
 
     Ciphertext predictions;
     // predictions = predict_cipher_weights(features_diagonals_ct, weights_ct, num_weights, evaluator, ckks_encoder, gal_keys, relin_keys, encryptor);
-    predictions = predict_cipher_weights(features_ct, weights_ct, num_weights, scale, evaluator, ckks_encoder, gal_keys, relin_keys, encryptor, params);
+    // predictions = predict_cipher_weights(features_ct, weights_ct, num_weights, scale, evaluator, ckks_encoder, gal_keys, relin_keys, encryptor, params);
+
+    Ciphertext new_weights = train_cipher(features_ct, features_T_ct, labels_ct, weights_ct, LEARNING_RATE, ITERS, observations, num_weights, evaluator, ckks_encoder, scale, gal_keys, relin_keys, encryptor, decryptor, params);
 
     return 0;
 }
