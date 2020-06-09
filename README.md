@@ -2,7 +2,6 @@
 My final year project using Microsoft SEAL. Contains some benchmark tests for matrix and vector operations. Also contains some examples based on the original examples already provided in the library. 
 
 ## Table of Contents
----
 
 * [Setup for Linux](#setup-for-linux)
 * [Setup for Windows](#setup-for-windows)
@@ -40,7 +39,6 @@ Refer to the Windows installation of SEAL in https://github.com/Microsoft/SEAL.
 Place the `.cpp` file(s) in the Source Files, and then build the project.
 
 ## Matrix and Vector Operations
----
 ### Linear Transformation
 The `linear_transformation.cpp` file contains an implementation of the linear transformation algorithm in the paper: https://eprint.iacr.org/2018/1041.pdf .
 
@@ -95,7 +93,6 @@ Running `benchmark` (after building the project) will generate a `bench_<your po
 The `benchmark2.cpp` is similar to the first benchmark file.
 
 ## Polynomial Evaluation
----
 
 The file `polynomial.cpp` contains 2 methods to evaluate polynomials using SEAL based on the works of Hao Chen in  https://github.com/haochenuw/algorithms-in-SEAL/ :
 ### Horner's method
@@ -112,7 +109,6 @@ The powers of x are pre-computed in a tree such as the example illustrated below
 ![Tree Img](imgs/tree.png?raw=true "Tree Method")
 
 ## Logistic Regression
----
 
 The goal of this project is eventually to implement a logistic regression model that could work over encrypted data. The dataset used is `pulsar_stars.csv` simply because it was easy to use: the features are integers and the labels are at the last column 0s and 1s. To use this dataset properly the features matrix has to be standardized, that is why I built a `standard_scaler` function that performs `(value - mean )/ standard_deviation` over the values of the features matrix. I have also provided helper functions for transforming the CSV file into a matrix of floats. The code for logistic regression is based on the code and explanation in https://ml-cheatsheet.readthedocs.io/en/latest/logistic_regression.html .
 
@@ -137,8 +133,6 @@ The protocol of the LR-CKKS works as follows:
 ![Protocol Img](imgs/fyp_prot.jpg?raw=true "Protocol")
 
 ## About the example files
----
-
 All the explanations are based on the comments and code from the SEAL examples. If you need a more detailed explaination, please refer to the original SEAL examples.
 
 ### 1 - BFV
@@ -189,6 +183,5 @@ In the example, we're evaluating the polynomial `PI*x^3 + 0.4x + 1`. When comput
 `Rotation` can be used in both BFV and CKKS schemes. It is a mechanism that allows you to rotate the encrypted vectors cyclically. It requires special keys called `Galois keys` which can be generated from the `KeyGenerator` class. It is possible to rotate the columns and rotate the rows. Rotations usually don't consume any noise budget. However, this is only the case when the special prime is at least as large as the other primes. The same applies for `relinearization`. 
 
 ## Bugs
----
 - [x] Parameter mismatch CKKS LR -> `update_weights() `
 - [ ] Ciphertext transparent in CKKS LR -> `update_weights()`
