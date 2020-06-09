@@ -36,8 +36,6 @@ To Build the project for the first time you need to run `cmake .` to generate th
 ## Setup for Windows
 Refer to the Windows installation of SEAL in https://github.com/Microsoft/SEAL.
 
-Place the `.cpp` file(s) in the Source Files, and then build the project.
-
 ## Matrix and Vector Operations
 ### Linear Transformation
 The `linear_transformation.cpp` file contains an implementation of the linear transformation algorithm in the paper: https://eprint.iacr.org/2018/1041.pdf .
@@ -132,8 +130,10 @@ The protocol of the LR-CKKS works as follows:
 
 ![Protocol Img](imgs/fyp_prot.jpg?raw=true "Protocol")
 
+In theory, using higher degree polynomials for approximating the sigmoid function is better however this would require a lot of rescaling which would lead to losing a lot of precision bits. **In order to get the best precision and performance, I used the degree 3 polynomial with Horner's method.**
+
 ## About the example files
-All the explanations are based on the comments and code from the SEAL examples. If you need a more detailed explaination, please refer to the original SEAL examples.
+All the explanations below are based on the comments and code from the SEAL examples. If you need a more detailed explaination, please refer to the original SEAL examples.
 
 ### 1 - BFV
 The first file is the `1_bfv.cpp`. It contains an example on how to use the bfv scheme in SEAL. The BFV encryption scheme is used mainly to encrypt integers. It requires three parameters:
@@ -141,13 +141,12 @@ The first file is the `1_bfv.cpp`. It contains an example on how to use the bfv 
 - Ciphertext Coefficient Modulus: `coeff_modulus`
 - Plaintext Coefficient Modulus: `plain_modulus`
 
-Since BFV is a homomorphic encryption scheme it allows computations on ciphertexts. However there exists a limit to those computations. Each ciphertext has an `invariant noise budget` measured in bits that is consumed on every ciphertext operation. If the noise budget were to reach 0, the ciphertext would be too corrupted for decryption.
+Each ciphertext has an `invariant noise budget` measured in bits that is consumed on every ciphertext operation. If the noise budget were to reach 0, the ciphertext would be too corrupted for decryption.
 The noise budget is computed as follows: `log2(coeff_modulus/plain_modulus)`. Choosing a larger `coeff_modulus` will give you a larger noise budget but will make computations a bit slower. The example provided uses a helper function from SEAL to create this parameter.
 
 The `size` of a ciphertext in SEAL is the number of polynomials. A new ciphertext has a size of `2`. Homomorphic Multiplication increases the size of the ciphertext: If two ciphertexts have sizes `M` and `N` then their multiplication will yield a size of `M+N-1`. The larger the ciphertext size the greater the consuption rate of the noise budget will be.
 
 It is possible to reduce the size of ciphertexts from `3` to `2` by applying `Relinearization` to the ciphertexts. However this procedure comes at a certain computational cost.
-
 
 ### 2 - Encoding
 There are 3 types of encoding that can be used in SEAL: `Integer Encoding` , `Batch Encoding` and `CKKS Encoding`.
