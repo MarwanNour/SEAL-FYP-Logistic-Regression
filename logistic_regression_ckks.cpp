@@ -32,15 +32,17 @@ vector<T> rotate_vec(vector<T> input_vec, int num_rotations)
 
 void print_Ciphertext_Info(string ctx_name, Ciphertext ctx, shared_ptr<SEALContext> context)
 {
-    cout << "\n" << ctx_name << " Info:" << endl;
-    cout << "\tLevel:\t" << context->get_context_data(ctx.parms_id())->chain_index() << endl;
-    cout << "\tScale:\t" << log2(ctx.scale()) << endl;
+    cout << "/" << endl;
+    cout << "| " << ctx_name << " Info:" << endl;
+    cout << "|\tLevel:\t" << context->get_context_data(ctx.parms_id())->chain_index() << endl;
+    cout << "|\tScale:\t" << log2(ctx.scale()) << endl;
     ios old_fmt(nullptr);
     old_fmt.copyfmt(cout);
     cout << fixed << setprecision(10);
-    cout << "\tExact Scale:\t" << ctx.scale() << endl;
+    cout << "|\tExact Scale:\t" << ctx.scale() << endl;
     cout.copyfmt(old_fmt);
-    cout << "\tSize:\t" << ctx.size() << endl;
+    cout << "|\tSize:\t" << ctx.size() << endl;
+    cout << "\\" << endl;
 }
 
 // Sigmoid
@@ -50,7 +52,7 @@ float sigmoid(float z)
 }
 
 // Tree Method
-Ciphertext Tree_sigmoid_approx(Ciphertext ctx, int degree, double scale, vector<double> coeffs, CKKSEncoder &ckks_encoder, Evaluator &evaluator, Encryptor &encryptor, RelinKeys relin_keys, EncryptionParameters params)
+Ciphertext Tree_cipher(Ciphertext ctx, int degree, double scale, vector<double> coeffs, CKKSEncoder &ckks_encoder, Evaluator &evaluator, Encryptor &encryptor, RelinKeys relin_keys, EncryptionParameters params)
 {
     cout << "->" << __func__ << endl;
 
@@ -90,7 +92,6 @@ Ciphertext Tree_sigmoid_approx(Ciphertext ctx, int degree, double scale, vector<
     cout << "All powers computed " << endl;
 
     // Print Ciphertext Information
-    cout << "\nCTx Info:" << endl;
     print_Ciphertext_Info("CTX", ctx, context);
 
     // Encrypt First Coefficient
@@ -100,7 +101,6 @@ Ciphertext Tree_sigmoid_approx(Ciphertext ctx, int degree, double scale, vector<
     cout << "Done" << endl;
 
     // Print Ciphertext Information
-    cout << "\nenc_result Info:" << endl;
     print_Ciphertext_Info("enc_result", enc_result, context);
 
     Ciphertext temp;
@@ -130,20 +130,18 @@ Ciphertext Tree_sigmoid_approx(Ciphertext ctx, int degree, double scale, vector<
     }
 
     // Print Ciphertext Information
-    cout << "\nenc_result Info:" << endl;
     print_Ciphertext_Info("enc_result", enc_result, context);
 
     return enc_result;
 }
 
-Ciphertext Horner_sigmoid_approx(Ciphertext ctx, int degree, vector<double> coeffs, CKKSEncoder &ckks_encoder, double scale, Evaluator &evaluator, Encryptor &encryptor, RelinKeys relin_keys, EncryptionParameters params)
+Ciphertext Horner_cipher(Ciphertext ctx, int degree, vector<double> coeffs, CKKSEncoder &ckks_encoder, double scale, Evaluator &evaluator, Encryptor &encryptor, RelinKeys relin_keys, EncryptionParameters params)
 {
     auto context = SEALContext::Create(params);
 
     cout << "->" << __func__ << endl;
     cout << "->" << __LINE__ << endl;
 
-    cout << "\nCTx Info:" << endl;
     print_Ciphertext_Info("CTX", ctx, context);
 
     vector<Plaintext> plain_coeffs(degree + 1);
@@ -199,7 +197,6 @@ Ciphertext Horner_sigmoid_approx(Ciphertext ctx, int degree, vector<double> coef
     }
     // cout << "->" << __LINE__ << endl;
 
-    cout << "\ntemp Info:" << endl;
     print_Ciphertext_Info("temp", temp, context);
 
     return temp;
@@ -261,7 +258,7 @@ Ciphertext predict_cipher_weights(vector<Ciphertext> features, Ciphertext weight
         exit(EXIT_FAILURE);
     }
 
-    Ciphertext predict_res = Horner_sigmoid_approx(lintransf_vec, coeffs.size() - 1, coeffs, ckks_encoder, scale, evaluator, encryptor, relin_keys, params);
+    Ciphertext predict_res = Horner_cipher(lintransf_vec, coeffs.size() - 1, coeffs, ckks_encoder, scale, evaluator, encryptor, relin_keys, params);
     cout << "->" << __LINE__ << endl;
     return predict_res;
 }
@@ -385,7 +382,7 @@ Ciphertext train_cipher(vector<Ciphertext> features, vector<Ciphertext> features
 }
 
 // Sigmoid approximation without encryption
-double sigmoid_approx_three(double x)
+double sigmoid_approx(double x)
 {
     cout << "->" << __func__ << endl;
     cout << "->" << __LINE__ << endl;
@@ -481,8 +478,8 @@ int main()
     chrono::microseconds time_diff;
     time_start = chrono::high_resolution_clock::now();
 
-    // Ciphertext ct_res_sigmoid = Tree_sigmoid_approx(ctx, DEGREE, scale, coeffs, ckks_encoder, evaluator, encryptor, relin_keys, params);
-    Ciphertext ct_res_sigmoid = Horner_sigmoid_approx(ctx, DEGREE, coeffs, ckks_encoder, scale, evaluator, encryptor, relin_keys, params);
+    // Ciphertext ct_res_sigmoid = Tree_cipher(ctx, DEGREE, scale, coeffs, ckks_encoder, evaluator, encryptor, relin_keys, params);
+    Ciphertext ct_res_sigmoid = Horner_cipher(ctx, DEGREE, coeffs, ckks_encoder, scale, evaluator, encryptor, relin_keys, params);
     time_end = chrono::high_resolution_clock::now();
     time_diff = chrono::duration_cast<chrono::microseconds>(time_end - time_start);
     cout << "Polynomial Evaluation Duration:\t" << time_diff.count() << " microseconds" << endl;
@@ -497,7 +494,7 @@ int main()
     double true_expected_res = sigmoid(x_eight);
 
     // Get expected approximate result
-    double expected_approx_res = sigmoid_approx_three(x);
+    double expected_approx_res = sigmoid_approx(x);
 
     cout << "Actual Approximate Result =\t\t" << res_sigmoid_vec[0] << endl;
     cout << "Expected Approximate Result =\t\t" << expected_approx_res << endl;
@@ -510,7 +507,7 @@ int main()
     cout << "CKKS Error: Diff Actual and Expected =\t" << horner_error << endl;
 
     // --------------------------- TEST LR -----------------------------------------
-    cout << "\n--------------------------- TEST LR ---------------------------\n"
+    cout << "\n--------------------------- TEST LR CKKS ---------------------------\n"
          << endl;
 
     // Read File
@@ -644,7 +641,6 @@ int main()
     int num_weights = features[0].size();
 
     Ciphertext predictions;
-    // predictions = predict_cipher_weights(features_diagonals_ct, weights_ct, num_weights, evaluator, ckks_encoder, gal_keys, relin_keys, encryptor);
     // predictions = predict_cipher_weights(features_ct, weights_ct, num_weights, scale, evaluator, ckks_encoder, gal_keys, relin_keys, encryptor, params);
 
     Ciphertext new_weights = train_cipher(features_ct, features_T_ct, labels_ct, weights_ct, LEARNING_RATE, ITERS, observations, num_weights, evaluator, ckks_encoder, scale, gal_keys, relin_keys, encryptor, decryptor, params);
