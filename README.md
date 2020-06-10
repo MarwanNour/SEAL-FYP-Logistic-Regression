@@ -1,5 +1,9 @@
-# SEAL-FYP
-My final year project using Microsoft SEAL. Contains some benchmark tests for matrix and vector operations. Also contains some examples based on the original examples already provided in the library. 
+# SEAL-FYP-Logistic-Regression
+My final year project using Microsoft SEAL. The purpose of this project is to **Create Functionalities for Matrices and Vectors** and **Build a Logistic Regression model using Fully Homomorphic Encryption.**
+
+The code also contains some benchmark tests for matrix and vector operations as well as some examples based on the original examples already provided in the SEAL library. 
+
+*Note: To view the graphs, you will need to have GNUPlot and Python 3 installed on your machine*
 
 ## Table of Contents
 
@@ -13,7 +17,7 @@ My final year project using Microsoft SEAL. Contains some benchmark tests for ma
     * [Vector Ops](#vector-ops)
     * [Benchmark](#benchmark)
 * [Polynomial Evaluation](#polynomial-evaluation)
-    * [Horner's Method](#horner's-method)
+    * [Horner's Method](#horners-method)
     * [Tree Method](#tree-method)
 * [Logistic Regression](#logistic-regression)
     * [Normal LR](#normal-lr)
