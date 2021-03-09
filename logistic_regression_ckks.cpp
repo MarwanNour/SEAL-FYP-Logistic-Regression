@@ -56,10 +56,11 @@ Ciphertext Tree_cipher(Ciphertext ctx, int degree, double scale, vector<double> 
 {
     cout << "->" << __func__ << endl;
 
-    auto context = SEALContext::Create(params);
-
+    SEALContext context(params);
+    auto tmp = make_shared<SEALContext>(context);
+    
     // Print Ciphertext Information
-    print_Ciphertext_Info("CTX", ctx, context);
+    print_Ciphertext_Info("CTX", ctx, tmp);
 
     int depth = ceil(log2(degree));
 
@@ -92,7 +93,7 @@ Ciphertext Tree_cipher(Ciphertext ctx, int degree, double scale, vector<double> 
     cout << "All powers computed " << endl;
 
     // Print Ciphertext Information
-    print_Ciphertext_Info("CTX", ctx, context);
+    print_Ciphertext_Info("CTX", ctx, tmp);
 
     // Encrypt First Coefficient
     Ciphertext enc_result;
@@ -101,7 +102,7 @@ Ciphertext Tree_cipher(Ciphertext ctx, int degree, double scale, vector<double> 
     cout << "Done" << endl;
 
     // Print Ciphertext Information
-    print_Ciphertext_Info("enc_result", enc_result, context);
+    print_Ciphertext_Info("enc_result", enc_result, tmp);
 
     Ciphertext temp;
 
@@ -130,19 +131,20 @@ Ciphertext Tree_cipher(Ciphertext ctx, int degree, double scale, vector<double> 
     }
 
     // Print Ciphertext Information
-    print_Ciphertext_Info("enc_result", enc_result, context);
+    print_Ciphertext_Info("enc_result", enc_result, tmp);
 
     return enc_result;
 }
 
 Ciphertext Horner_cipher(Ciphertext ctx, int degree, vector<double> coeffs, CKKSEncoder &ckks_encoder, double scale, Evaluator &evaluator, Encryptor &encryptor, RelinKeys relin_keys, EncryptionParameters params)
 {
-    auto context = SEALContext::Create(params);
+    SEALContext context(params);
+    auto tmp = make_shared<SEALContext>(context);
 
     cout << "->" << __func__ << endl;
     cout << "->" << __LINE__ << endl;
 
-    print_Ciphertext_Info("CTX", ctx, context);
+    print_Ciphertext_Info("CTX", ctx, tmp);
 
     vector<Plaintext> plain_coeffs(degree + 1);
 
@@ -169,8 +171,8 @@ Ciphertext Horner_cipher(Ciphertext ctx, int degree, vector<double> coeffs, CKKS
 
     for (int i = degree - 1; i >= 0; i--)
     {
-        int ctx_level = context->get_context_data(ctx.parms_id())->chain_index();
-        int temp_level = context->get_context_data(temp.parms_id())->chain_index();
+        int ctx_level = tmp->get_context_data(ctx.parms_id())->chain_index();
+        int temp_level = tmp->get_context_data(temp.parms_id())->chain_index();
         if (ctx_level > temp_level)
         {
             evaluator.mod_switch_to_inplace(ctx, temp.parms_id());
@@ -197,7 +199,7 @@ Ciphertext Horner_cipher(Ciphertext ctx, int degree, vector<double> coeffs, CKKS
     }
     // cout << "->" << __LINE__ << endl;
 
-    print_Ciphertext_Info("temp", temp, context);
+    print_Ciphertext_Info("temp", temp, tmp);
 
     return temp;
 }
@@ -326,12 +328,13 @@ Ciphertext update_weights(vector<Ciphertext> features, vector<Ciphertext> featur
     cout << "LR / num_obs = " << N << endl;
 
     Plaintext N_pt;
-    ckks_encoder.encode(N, N_pt);
+    ckks_encoder.encode(N, scale, N_pt);
     // Mod Switch N_pt
     evaluator.mod_switch_to_inplace(N_pt, gradient.parms_id());
 
     cout << "->" << __LINE__ << endl;
     evaluator.multiply_plain_inplace(gradient, N_pt); // ERROR HERE: CIPHERTEXT IS TRANSPARENT
+    // I fixed this error, just change "ckks_encoder.encode(N, N_pt);" to "ckks_encoder.encode(N, scale, N_pt);", line 331
 
     // Subtract from weights
     Ciphertext new_weights;
@@ -412,21 +415,26 @@ int main()
 {
 
     // Test evaluate sigmoid approx
-    EncryptionParameters params(scheme_type::CKKS);
+    EncryptionParameters params(scheme_type::ckks);
 
     params.set_poly_modulus_degree(POLY_MOD_DEGREE);
     params.set_coeff_modulus(CoeffModulus::Create(POLY_MOD_DEGREE, {60, 40, 40, 40, 40, 40, 40, 40, 60}));
+    // "scale out of bounds" because primes are not sufficient
 
     double scale = pow(2.0, 40);
 
-    auto context = SEALContext::Create(params);
+    SEALContext context(params);
+    auto tmp = make_shared<SEALContext>(context);
 
     // Generate keys, encryptor, decryptor and evaluator
     KeyGenerator keygen(context);
-    PublicKey pk = keygen.public_key();
     SecretKey sk = keygen.secret_key();
-    GaloisKeys gal_keys = keygen.galois_keys();
-    RelinKeys relin_keys = keygen.relin_keys();
+    PublicKey pk;
+    keygen.create_public_key(pk);
+    RelinKeys relin_keys;
+    keygen.create_relin_keys(relin_keys);
+    GaloisKeys gal_keys;
+    keygen.create_galois_keys(gal_keys);
 
     Encryptor encryptor(context, pk);
     Evaluator evaluator(context);
@@ -435,7 +443,7 @@ int main()
     // Create CKKS encoder
     CKKSEncoder ckks_encoder(context);
 
-    print_parameters(context);
+    print_parameters(tmp);
 
     // -------------------------- TEST SIGMOID APPROXIMATION ---------------------------
     cout << "\n------------------- TEST SIGMOID APPROXIMATION -------------------\n"
