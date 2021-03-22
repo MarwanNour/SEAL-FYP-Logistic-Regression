@@ -19,10 +19,10 @@ void print_parameters(shared_ptr<SEALContext> context)
     string scheme_name;
     switch (context_data.parms().scheme())
     {
-    case scheme_type::BFV:
+    case scheme_type::bfv:
         scheme_name = "BFV";
         break;
-    case scheme_type::CKKS:
+    case scheme_type::ckks:
         scheme_name = "CKKS";
         break;
     default:
@@ -44,7 +44,7 @@ void print_parameters(shared_ptr<SEALContext> context)
     cout << coeff_modulus.back().bit_count();
     cout << ") bits" << endl;
 
-    if (context_data.parms().scheme() == scheme_type::BFV)
+    if (context_data.parms().scheme() == scheme_type::bfv)
     {
         cout << "|   plain_modulus: " << context_data.parms().plain_modulus().value() << endl;
     }
@@ -236,7 +236,7 @@ Ciphertext Linear_Transform_Cipher(Ciphertext ct, vector<Ciphertext> U_diagonals
 // Linear Transformation function between plaintext  matrix and ciphertext vector
 Ciphertext Linear_Transform_Plain(Ciphertext ct, vector<Plaintext> U_diagonals, GaloisKeys gal_keys, EncryptionParameters params)
 {
-    auto context = SEALContext::Create(params);
+    SEALContext context(params);
     Evaluator evaluator(context);
 
     // Fill ct with duplicate
