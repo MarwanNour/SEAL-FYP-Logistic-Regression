@@ -16,19 +16,23 @@ void MatrixTranspose(size_t poly_modulus_degree, int dimension)
         exit(1);
     }
 
-    EncryptionParameters params(scheme_type::CKKS);
+    EncryptionParameters params(scheme_type::ckks);
     params.set_poly_modulus_degree(poly_modulus_degree);
     cout << "MAX BIT COUNT: " << CoeffModulus::MaxBitCount(poly_modulus_degree) << endl;
     params.set_coeff_modulus(CoeffModulus::Create(poly_modulus_degree, {60, 40, 40, 40, 40, 60}));
-    auto context = SEALContext::Create(params);
+    
+    SEALContext context(params);
+    auto tmp = make_shared<SEALContext>(context);
 
     // Generate keys, encryptor, decryptor and evaluator
     KeyGenerator keygen(context);
-    PublicKey pk = keygen.public_key();
+    PublicKey pk;
+    keygen.create_public_key(pk);
     SecretKey sk = keygen.secret_key();
-    GaloisKeys gal_keys = keygen.galois_keys();
-    RelinKeys relin_keys = keygen.relin_keys();
-
+    GaloisKeys gal_keys;
+    keygen.create_galois_keys(gal_keys);
+    RelinKeys relin_keys;
+    keygen.create_relin_keys(relin_keys);
     Encryptor encryptor(context, pk);
     Evaluator evaluator(context);
     Decryptor decryptor(context, sk);
