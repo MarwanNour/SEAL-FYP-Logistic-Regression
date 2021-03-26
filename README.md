@@ -3,7 +3,7 @@ My final year project using Microsoft SEAL. The purpose of this project is to **
 
 The code also contains some benchmark tests for matrix and vector operations as well as some examples based on the original examples already provided in the SEAL library. 
 
-*Note: SEAL Version 3.4.5 is required. To view the graphs, you will need to have GNUPlot and Python 3 installed on your machine*
+*Note: SEAL Version 3.4.5 is required (migration to 3.6 coming soon). To view the graphs, you will need to have GNUPlot and Python 3 installed on your machine*
 
 ## Table of Contents
 
